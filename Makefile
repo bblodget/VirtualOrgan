@@ -31,4 +31,20 @@ gen-samples: test/gen_test_samples.c
 clean:
 	rm -f $(OBJ) $(TARGET) gen-samples
 
-.PHONY: all clean gen-samples
+help:
+	@echo "VirtualOrgan — Build Targets"
+	@echo ""
+	@echo "  make              Build the organ engine"
+	@echo "  make clean        Remove build artifacts"
+	@echo "  make gen-samples  Generate sine wave test samples in samples/test/"
+	@echo "  make help         Show this help"
+	@echo ""
+	@echo "Usage:"
+	@echo "  ./organ-engine <config.toml> [--fake-midi]"
+	@echo ""
+	@echo "Examples:"
+	@echo "  ./organ-engine test/test_config.toml --fake-midi   Test with generated sine waves"
+	@echo "  ./organ-engine test/burea_config.toml --fake-midi  Test with Bureå organ samples"
+	@echo "  ./organ-engine test/burea_config.toml              Real MIDI keyboard input"
+
+.PHONY: all clean gen-samples help
