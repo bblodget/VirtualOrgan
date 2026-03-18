@@ -52,7 +52,7 @@ int main(int argc, char **argv)
     }
 
     printf("\nLoading samples for rank '%s'...\n", config.ranks[0].name);
-    if (sampler_load(&bank, config.ranks[0].sample_dir) < 0)
+    if (sampler_load(&bank, config.ranks[0].sample_dir, config.ranks[0].filename_pattern) < 0)
         return 1;
 
     /* Initialize voice pool and ring buffer */

@@ -9,6 +9,7 @@
 
 typedef struct {
     char     sample_dir[MAX_PATH_LEN];
+    char     filename_pattern[MAX_PATH_LEN];  /* e.g. "{note:03d}.wav" or "{note:03d}-{name}.wav" */
     int      midi_channel;
     int      output_channels[MAX_OUTPUT_CHANNELS];
     int      num_output_channels;

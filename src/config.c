@@ -66,6 +66,14 @@ int config_load(OrganConfig *cfg, const char *path)
                 free(val.u.s);
             }
 
+            val = toml_string_in(rank, "filename_pattern");
+            if (val.ok) {
+                strncpy(rc->filename_pattern, val.u.s, sizeof(rc->filename_pattern) - 1);
+                free(val.u.s);
+            } else {
+                strncpy(rc->filename_pattern, "{note:03d}.wav", sizeof(rc->filename_pattern) - 1);
+            }
+
             val = toml_int_in(rank, "midi_channel");
             if (val.ok) rc->midi_channel = (int)val.u.i;
 
@@ -100,6 +108,7 @@ void config_print(const OrganConfig *cfg)
         const RankConfig *rc = &cfg->ranks[i];
         printf("    [%s]\n", rc->name);
         printf("      sample_dir: %s\n", rc->sample_dir);
+        printf("      filename_pattern: %s\n", rc->filename_pattern);
         printf("      midi_channel: %d\n", rc->midi_channel);
         printf("      output_channels:");
         for (int j = 0; j < rc->num_output_channels; j++)

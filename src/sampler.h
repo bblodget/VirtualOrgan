@@ -16,9 +16,11 @@ typedef struct {
     int     count;                    /* number of loaded samples */
 } SampleBank;
 
-/* Load all WAV files from directory into bank. Files named NNN.wav (MIDI note number).
+/* Load all WAV files from directory into bank.
+ * Pattern uses {note} for MIDI note number and {name} for note name.
+ * Examples: "{note:03d}.wav", "{note:03d}-{name}.wav"
  * Returns number of samples loaded, or -1 on error. */
-int sampler_load(SampleBank *bank, const char *dir);
+int sampler_load(SampleBank *bank, const char *dir, const char *pattern);
 
 /* Free all loaded samples. */
 void sampler_free(SampleBank *bank);
