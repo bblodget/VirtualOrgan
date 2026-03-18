@@ -1,0 +1,13 @@
+# Build artifacts
+organ-engine
+gen-samples
+*.o
+*.d
+
+# Test samples (generated)
+test/samples/
+
+# Editor files
+*.swp
+*~
+.vscode/
