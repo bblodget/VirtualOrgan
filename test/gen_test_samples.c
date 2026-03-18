@@ -1,8 +1,15 @@
 /*
- * gen_test_samples.c — Generate sine wave WAV files for testing
+ * VirtualOrgan — virtual pipe organ engine for Linux
+ * Copyright (C) 2026 Brandon Blodget
  *
- * Usage: gen-samples <output_dir>
- * Creates one WAV per MIDI note (36–84, C2–C6), 2 seconds each at 48kHz.
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
  */
 
 #include <math.h>
