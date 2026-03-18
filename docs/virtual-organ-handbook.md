@@ -12,6 +12,7 @@ A guide to the concepts, theory, and technologies behind building a real-time vi
 4. [The Audio Pipeline](#chapter-4-the-audio-pipeline)
 5. [Lock-Free Programming for Audio](#chapter-5-lock-free-programming-for-audio)
 6. [Sample Playback and Digital Audio Fundamentals](#chapter-6-sample-playback-and-digital-audio-fundamentals)
+7. [Sample Sets — Where Pipe Sounds Come From](#chapter-7-sample-sets--where-pipe-sounds-come-from)
 
 ---
 
@@ -28,7 +29,29 @@ Organs are organized into **divisions** — separate sections of the instrument,
 - **Pedal** — played with the feet, providing bass notes
 - **Choir** — a softer accompanimental division
 
-The organist selects which ranks sound by pulling **stop knobs** or pressing **stop tabs**. A **registration** is a particular combination of stops — the organ equivalent of a sound preset.
+### Ranks and Stops
+
+A **rank** is a complete set of pipes — one pipe for every note on the keyboard — that all share the same tone color (timbre). A large organ might have 50 or more ranks.
+
+Ranks are named by their **tone family** and **foot pitch**. The foot pitch refers to the speaking length of the lowest pipe in the rank:
+
+- **8'** (eight foot) — plays at normal pitch. Middle C sounds as middle C.
+- **4'** (four foot) — plays one octave higher. Middle C sounds as the C above.
+- **16'** (sixteen foot) — plays one octave lower. Common in pedal divisions for deep bass.
+- **2'** (two foot) — plays two octaves higher. Adds brilliance and clarity.
+
+The major tone families, based on pipe construction:
+
+- **Principal (Diapason)** — the classic organ sound. Open cylindrical metal pipes. The foundation of the instrument.
+- **Flute** — softer, rounder tone. Often stopped (capped) pipes, which sound an octave lower for their size.
+- **String** — thin, bright, slightly buzzy tone from narrow-scaled pipes. Names like Viola, Salicional, Gamba.
+- **Reed** — uses a vibrating metal tongue instead of just air. Brassy or buzzy character. Trumpets, oboes, clarinets.
+
+So "Principal 8'" is a rank of principal-family pipes at normal pitch, while "Flute 4'" is a rank of flute-family pipes sounding an octave higher.
+
+A **stop** is the control (a knob or tab on the console) that engages or disengages a rank. When the organist pulls the "Principal 8'" stop, that rank becomes active and its pipes sound when keys are pressed. Multiple stops can be engaged simultaneously — that's how the organ builds up its massive, layered sound. "Full organ" might have 20+ ranks all sounding at once.
+
+A **registration** is a particular combination of stops — the organ equivalent of a sound preset.
 
 ### The Virtual Version
 
@@ -85,6 +108,12 @@ Hardware (USB audio interface → amplifier → speakers)
 - **Real-time scheduling** — the JACK process thread runs at elevated priority so the OS doesn't interrupt it
 
 We use **JACK2** (jackd2), the multi-threaded implementation.
+
+### Frames
+
+In digital audio, a **frame** is one sample per channel at a single point in time. For a stereo output, one frame is 2 float values (left and right). For mono, one frame is 1 float. The term exists so we can talk about time positions in the audio stream regardless of how many channels are in use.
+
+When JACK asks for 128 frames of stereo audio, it needs 256 float values total — but those values represent 128 points in time.
 
 ### The JACK Process Callback
 
@@ -370,6 +399,129 @@ frequency = 440 × 2^((note - 69) / 12)
 This formula places A4 (MIDI note 69) at 440 Hz — the standard tuning reference — and spaces notes equally in **equal temperament**, where each semitone is a factor of 2^(1/12) ≈ 1.0595 apart.
 
 Each test sample is 2 seconds long with short fade-in/fade-out ramps to prevent clicks at the start and end.
+
+---
+
+## Chapter 7: Sample Sets — Where Pipe Sounds Come From
+
+### What Is a Sample Set?
+
+A sample set is a collection of audio recordings of a real pipe organ — every individual pipe recorded separately. A typical set includes hundreds or thousands of WAV files organized by rank, plus metadata describing how the files map to notes, stops, and divisions.
+
+Creating a sample set is a painstaking process. A recording team visits a church, silences the blower, and then records each pipe one at a time with high-quality microphones. A medium-sized organ with 30 ranks and 61 notes per rank requires recording nearly 2,000 individual pipes. The process can take several days.
+
+### Anatomy of a Sample
+
+Each pipe recording captures three phases of the sound:
+
+1. **Attack** — the initial transient (50–200ms) as wind enters the pipe
+2. **Sustain** — the steady-state tone, from which a seamless loop region is extracted
+3. **Release** — the natural decay (100–500ms) after the wind is cut off
+
+A typical pipe sample is **2–6 seconds** long at 44.1 or 48 kHz. Because the sustain portion is looped during playback, a 3-second recording can produce a note that sustains indefinitely.
+
+Loop points are stored as **cue markers inside the WAV file** metadata. The tool **LoopAuditioneer** is commonly used to find good loop points at zero-crossings and add crossfades to eliminate clicks at the loop boundaries.
+
+### Memory Requirements
+
+Sample sets can be large. For reference:
+
+| Organ Size | Ranks | Approx. Size |
+|-----------|-------|-------------|
+| Small chapel (6 stops) | 7 ranks | 90–200 MB |
+| Medium church (20 stops) | 25 ranks | 500 MB – 1 GB |
+| Large cathedral (50+ stops) | 50+ ranks | 2–5 GB |
+
+All samples are loaded into RAM at startup for instant access during playback — there is no time to read from disk inside the real-time audio callback. The Minix's 16 GB of RAM can comfortably hold even large sample sets.
+
+### The GrandOrgue Format
+
+Most freely available sample sets are distributed in the **GrandOrgue** format, which consists of:
+
+- **WAV files** — one per pipe, organized into directories by rank
+- **An ODF (Organ Definition File)** — an INI-style text file that describes the organ's structure: which ranks belong to which stops, MIDI mappings, division assignments, display layout, and more
+
+A typical directory structure:
+
+```
+Burea_Funeral_Chapel/
+├── burea_gravkapell.organ          ← ODF file
+├── Gedackt8/                       ← Rank: Gedackt 8' (stopped flute)
+│   ├── 036-C.wav
+│   ├── 037-C#.wav
+│   ├── 038-D.wav
+│   ├── ...
+│   └── 096-C.wav
+├── Principal2/                     ← Rank: Principal 2'
+│   ├── 036-C.wav
+│   └── ...
+├── Salicional8/                    ← Rank: Salicional 8' (string)
+│   ├── 036-C.wav
+│   └── ...
+├── Subbas16/                       ← Rank: Subbas 16' (pedal bass)
+│   ├── 036-C.wav
+│   └── ...
+└── ConsoleImages/                  ← GUI graphics (not used by our engine)
+```
+
+File naming follows the pattern `NNN-Name.wav` where NNN is the zero-padded MIDI note number and Name is the note letter (with # for sharps). For example, `060-C.wav` is middle C, `061-C#.wav` is C-sharp above middle C.
+
+### Filename Patterns
+
+Different sample sets use different file naming conventions. Rather than hard-coding one convention, our engine uses a configurable **filename pattern** in the TOML config:
+
+```toml
+[ranks.gedackt8]
+sample_dir = "samples/Burea_Funeral_Chapel/Gedackt8"
+filename_pattern = "{note:03d}-{name}.wav"
+```
+
+Available placeholders:
+
+| Placeholder | Expands To | Example (middle C) |
+|-------------|-----------|-------------------|
+| `{note:03d}` | Zero-padded 3-digit MIDI note | `060` |
+| `{note:02d}` | Zero-padded 2-digit MIDI note | `60` |
+| `{note}` | Unpadded MIDI note number | `60` |
+| `{name}` | Note name with # for sharps | `C` |
+| `{octave}` | Octave number | `4` |
+
+This allows the engine to load samples from any sample set without renaming files. A few examples:
+
+| Pattern | Result | Used By |
+|---------|--------|---------|
+| `{note:03d}-{name}.wav` | `060-C.wav` | GrandOrgue / Lars Palo sets |
+| `{note:03d}.wav` | `060.wav` | Our generated test samples |
+| `{name}{octave}.wav` | `C4.wav` | Some commercial sets |
+
+### Where to Find Sample Sets
+
+**Free sample sets:**
+
+- **Lars Palo** (familjenpalo.se) — 8 high-quality sets of Swedish organs, Creative Commons licensed. Sizes range from 92 MB (Bureå Funeral Chapel, 6 stops) to 2.1 GB (Jukkasjärvi Church). An excellent starting point.
+- **Piotr Grabowski** (piotrgrabowski.pl) — 15+ free sets of Polish organs, ranging from small chamber organs to 40-stop instruments.
+- **Sonus Paradisi** (sonusparadisi.cz) — Premium commercial producer that offers free demo versions of several organs with 16–24 stops each.
+- **Binaural Pipes** (binauralpipes.com) — Free sets recorded with binaural microphone technique, optimized for headphone listening.
+
+**Commercial sample sets:**
+
+- **Sonus Paradisi** — recordings of famous European organs, $50–$300+
+- **Inspired Acoustics** — Hauptwerk-format sets (may be encrypted/DRM-protected)
+- **Pipeloops** (pipeloops.com) — Various organs, some free demos available
+
+**Important note on formats:** GrandOrgue-format sets (with WAV files and an ODF) work with our engine — we just need the WAV files and the filename pattern. Hauptwerk-format sets may use encrypted or proprietary container formats that cannot be used directly.
+
+### Synthetic Alternatives
+
+Real pipe sounds can also be approximated mathematically using **additive synthesis** — summing sine waves at harmonic frequencies with amplitudes that match the acoustic profile of different pipe families:
+
+- **Principal** — strong fundamental with gradually decreasing harmonics
+- **Stopped flute** — strong fundamental, mostly odd harmonics (3rd, 5th, 7th)
+- **Open flute** — strong fundamental, very weak upper harmonics
+- **String** — weak fundamental, many strong upper harmonics
+- **Reed** — strong odd harmonics with complex upper spectrum
+
+Adding a short noise burst at the onset simulates the attack transient ("chiff"), and subtle random pitch/amplitude modulation simulates wind fluctuations. This approach won't rival real recorded samples for realism, but can produce convincing results — and requires no downloads or licensing considerations.
 
 ---
 
