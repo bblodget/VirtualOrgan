@@ -4,6 +4,6 @@ buffer_size = 128
 jack_client_name = "organ"
 
 [ranks.test_principal]
-sample_dir = "test/samples"
+sample_dir = "samples/test"
 midi_channel = 1
 output_channels = [1, 2]

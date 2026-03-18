@@ -4,8 +4,8 @@ gen-samples
 *.o
 *.d
 
-# Test samples (generated)
-test/samples/
+# Sample files (large, downloaded or generated)
+samples/
 
 # Editor files
 *.swp

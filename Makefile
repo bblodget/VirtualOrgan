@@ -25,8 +25,8 @@ $(TARGET): $(OBJ)
 # Generate test sample WAV files
 gen-samples: test/gen_test_samples.c
 	$(CC) $(CFLAGS) -o $@ $< $(shell pkg-config --libs sndfile) -lm
-	mkdir -p test/samples
-	./gen-samples test/samples
+	mkdir -p samples/test
+	./gen-samples samples/test
 
 clean:
 	rm -f $(OBJ) $(TARGET) gen-samples
