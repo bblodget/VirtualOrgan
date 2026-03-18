@@ -2,6 +2,9 @@
 
 A custom, config-driven virtual pipe organ engine written in C for Linux. Designed as a dedicated headless appliance for playing sampled pipe organ sounds through a multi-channel speaker system, controlled via an iPad web interface over WiFi.
 
+> **Status: Early Development**
+> The core audio pipeline works — MIDI input, sample playback, voice management, and JACK output. Many features are not yet implemented including multi-channel routing, stop controls, the web interface, and sustain looping. See [`docs/todo.md`](docs/todo.md) for current progress.
+
 ## Building
 
 ### Dependencies
