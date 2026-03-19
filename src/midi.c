@@ -60,7 +60,7 @@ static void *alsa_midi_thread(void *arg)
     RingBuffer *rb = (RingBuffer *)arg;
     snd_seq_t *seq = NULL;
 
-    if (snd_seq_open(&seq, "default", SND_SEQ_OPEN_INPUT, 0) < 0) {
+    if (snd_seq_open(&seq, "default", SND_SEQ_OPEN_INPUT | SND_SEQ_NONBLOCK, 0) < 0) {
         fprintf(stderr, "midi: cannot open ALSA sequencer\n");
         return NULL;
     }
@@ -90,7 +90,8 @@ static void *alsa_midi_thread(void *arg)
             continue;
 
         snd_seq_event_t *ev;
-        while (snd_seq_event_input(seq, &ev) >= 0) {
+        int err;
+        while (running && (err = snd_seq_event_input(seq, &ev)) >= 0) {
             MidiEvent me = {0};
 
             switch (ev->type) {
