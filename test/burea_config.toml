@@ -1,6 +1,6 @@
 [audio]
 sample_rate = 44100
-buffer_size = 128
+buffer_size = 256
 jack_client_name = "organ"
 
 [ranks.gedackt8]
