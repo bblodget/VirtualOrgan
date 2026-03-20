@@ -109,6 +109,47 @@ Hardware (USB audio interface → amplifier → speakers)
 
 We use **JACK2** (jackd2), the multi-threaded implementation.
 
+### PipeWire vs JACK
+
+Modern Linux distributions (including Debian Trixie) ship with **PipeWire**, a newer audio server that replaces both PulseAudio (desktop audio) and JACK. PipeWire handles everything — notification sounds, video calls, Bluetooth headphones, screen sharing, and pro audio — through a single unified service.
+
+|                  | JACK                                | PipeWire                                |
+|------------------|-------------------------------------|-----------------------------------------|
+| **Focus**        | Professional audio only             | Everything (desktop + pro audio)        |
+| **Latency**      | You control it directly (64–4096 frames) | Managed automatically, tends toward larger buffers |
+| **Complexity**   | Must start/stop manually            | Runs as a system service, just works    |
+| **Buffer size**  | You choose exactly                  | Negotiated by the system                |
+| **First release**| 2002                                | 2017                                    |
+
+PipeWire includes a **JACK compatibility layer** (`pipewire-jack`). Applications that use the JACK API can run under PipeWire by prefixing the command with `pw-jack`:
+
+```bash
+# Run under PipeWire's JACK compatibility
+pw-jack ./organ-engine config.toml
+
+# Run under standalone JACK (must start jackd first)
+./organ-engine config.toml
+```
+
+For development, PipeWire is convenient — it runs automatically and coexists with desktop audio. For our dedicated organ appliance, standalone JACK is the right choice because:
+
+- We don't need desktop audio, Bluetooth, or video
+- We want explicit control over buffer size and latency
+- The machine is dedicated to a single task
+- Every millisecond of latency matters for a keyboard instrument
+
+In practice, the difference is significant. PipeWire defaulted to a 1024-frame buffer (~21ms latency) for our engine, while standalone JACK lets us specify 128 frames (~2.7ms) — an 8× improvement.
+
+To switch from PipeWire to standalone JACK:
+
+```bash
+# Stop PipeWire
+systemctl --user stop pipewire pipewire-pulse pipewire.socket pipewire-pulse.socket
+
+# Start JACK with real-time priority, 128-frame buffer
+jackd -R -d alsa -d hw:1 -r 48000 -p 128 &
+```
+
 ### Frames
 
 In digital audio, a **frame** is one sample per channel at a single point in time. For a stereo output, one frame is 2 float values (left and right). For mono, one frame is 1 float. The term exists so we can talk about time positions in the audio stream regardless of how many channels are in use.
@@ -152,9 +193,29 @@ Standard Linux uses a **preemptive** scheduler, but it can still delay audio thr
 
 - The `audio` group gets real-time scheduling privileges via `/etc/security/limits.d/audio.conf`
 - JACK runs its process thread at **FIFO scheduling priority**, meaning it preempts almost everything
-- The `PREEMPT_RT` kernel patch set (or Debian's `linux-lowlatency` package) reduces worst-case scheduling latency from ~10ms to ~50μs
+- The `PREEMPT_RT` kernel patch set reduces worst-case scheduling latency from ~10ms to ~50μs
 
-Our system configures this via:
+**Installing the RT kernel on Debian Trixie:**
+
+```bash
+sudo apt install linux-image-rt-amd64
+```
+
+After a reboot, verify it's active:
+
+```bash
+# Check kernel version — look for "-rt-" in the name
+uname -r
+# Example: 6.12.74+deb13+1-rt-amd64
+
+# Confirm PREEMPT_RT is enabled (1 = active)
+cat /sys/kernel/realtime
+# 1
+```
+
+The standard kernel remains available in GRUB's "Advanced options" as a fallback. Both kernels can coexist.
+
+Our system also configures real-time scheduling privileges via:
 
 ```ini
 # /etc/security/limits.d/audio.conf
