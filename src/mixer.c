@@ -17,8 +17,8 @@
 #include "mixer.h"
 
 /* Master gain to prevent clipping when multiple voices play.
- * 0.15 allows ~6 simultaneous voices at full velocity before clipping. */
-#define MASTER_GAIN 0.15f
+ * With 7 ranks each note triggers 7 voices, so keep gain conservative. */
+#define MASTER_GAIN 0.10f
 
 /* Soft clamp to prevent harsh digital clipping.
  * Uses tanh for a smooth saturation curve. */

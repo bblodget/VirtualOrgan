@@ -19,11 +19,11 @@
 
 ## Up Next
 
-- [ ] Test with real audio output on the Minix (JACK + ALSA driver)
-- [ ] Test with MIDI keyboard (USB MIDI → ALSA → organ engine)
+- [x] Test with real audio output on the Minix (JACK + ALSA driver)
+- [x] Test with MIDI keyboard (USB MIDI → ALSA → organ engine)
 - [ ] Test at Dad's house with speaker system
 - [ ] Add remaining Bureå ranks to config (all 7 ranks)
-- [ ] Install PREEMPT_RT kernel for low-latency audio
+- [x] Install PREEMPT_RT kernel for low-latency audio
 
 ## Phase 3 — Voice Management
 

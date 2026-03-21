@@ -58,16 +58,27 @@ int main(int argc, char **argv)
         return 1;
     config_print(&config);
 
-    /* Load samples from first rank */
-    SampleBank bank;
+    /* Load samples for all ranks */
     if (config.num_ranks == 0) {
         fprintf(stderr, "error: no ranks defined in config\n");
         return 1;
     }
 
-    printf("\nLoading samples for rank '%s'...\n", config.ranks[0].name);
-    if (sampler_load(&bank, config.ranks[0].sample_dir, config.ranks[0].filename_pattern) < 0)
+    SampleBank *banks = calloc(config.num_ranks, sizeof(SampleBank));
+    if (!banks) {
+        fprintf(stderr, "error: cannot allocate sample banks\n");
         return 1;
+    }
+
+    for (int i = 0; i < config.num_ranks; i++) {
+        printf("\nLoading samples for rank '%s'...\n", config.ranks[i].name);
+        if (sampler_load(&banks[i], config.ranks[i].sample_dir, config.ranks[i].filename_pattern) < 0) {
+            for (int j = 0; j < i; j++)
+                sampler_free(&banks[j]);
+            free(banks);
+            return 1;
+        }
+    }
 
     /* Initialize voice pool and ring buffer */
     VoicePool voice_pool;
@@ -80,7 +91,9 @@ int main(int argc, char **argv)
     printf("\nStarting MIDI input%s...\n", fake_midi ? " (fake mode)" : "");
     if (midi_start(&ring_buffer, fake_midi) != 0) {
         fprintf(stderr, "error: cannot start MIDI thread\n");
-        sampler_free(&bank);
+        for (int i = 0; i < config.num_ranks; i++)
+            sampler_free(&banks[i]);
+        free(banks);
         return 1;
     }
 
@@ -89,14 +102,17 @@ int main(int argc, char **argv)
     JackEngineCtx ctx = {
         .ring_buffer  = &ring_buffer,
         .voice_pool   = &voice_pool,
-        .sample_bank  = &bank,
+        .sample_banks = banks,
+        .num_banks    = config.num_ranks,
         .config       = &config,
     };
 
     if (jack_engine_start(&ctx) != 0) {
         fprintf(stderr, "error: cannot start JACK engine\n");
         midi_stop();
-        sampler_free(&bank);
+        for (int i = 0; i < config.num_ranks; i++)
+            sampler_free(&banks[i]);
+        free(banks);
         return 1;
     }
 
@@ -116,7 +132,9 @@ int main(int argc, char **argv)
 
     jack_engine_stop();
     midi_stop();
-    sampler_free(&bank);
+    for (int i = 0; i < config.num_ranks; i++)
+        sampler_free(&banks[i]);
+    free(banks);
 
     printf("Done.\n");
     return 0;

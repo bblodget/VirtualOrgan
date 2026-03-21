@@ -31,9 +31,12 @@ static int process_callback(jack_nframes_t nframes, void *arg)
     MidiEvent ev;
     while (ring_buffer_pop(engine_ctx->ring_buffer, &ev)) {
         if (ev.type == MIDI_NOTE_ON && ev.velocity > 0) {
-            /* Find the sample for this note in the first rank (Phase 2) */
-            const Sample *sample = &engine_ctx->sample_bank->samples[ev.note];
-            voice_pool_note_on(engine_ctx->voice_pool, ev.note, ev.velocity, sample);
+            /* Trigger a voice for each loaded rank */
+            for (int r = 0; r < engine_ctx->num_banks; r++) {
+                const Sample *sample = &engine_ctx->sample_banks[r].samples[ev.note];
+                if (sample->data)
+                    voice_pool_note_on(engine_ctx->voice_pool, ev.note, ev.velocity, sample);
+            }
         } else if (ev.type == MIDI_NOTE_OFF ||
                    (ev.type == MIDI_NOTE_ON && ev.velocity == 0)) {
             voice_pool_note_off(engine_ctx->voice_pool, ev.note);

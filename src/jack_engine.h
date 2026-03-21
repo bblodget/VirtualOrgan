@@ -23,7 +23,8 @@
 typedef struct {
     RingBuffer  *ring_buffer;
     VoicePool   *voice_pool;
-    SampleBank  *sample_bank;
+    SampleBank  *sample_banks;   /* array of banks, one per rank */
+    int          num_banks;
     OrganConfig *config;
 } JackEngineCtx;
 
