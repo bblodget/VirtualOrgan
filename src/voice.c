@@ -29,11 +29,13 @@ Voice *voice_pool_note_on(VoicePool *pool, uint8_t note, uint8_t velocity, const
     for (int i = 0; i < MAX_VOICES; i++) {
         if (!pool->voices[i].active) {
             Voice *v = &pool->voices[i];
-            v->active   = true;
-            v->note     = note;
-            v->velocity = velocity;
-            v->sample   = sample;
-            v->position = 0;
+            v->active    = true;
+            v->note      = note;
+            v->velocity  = velocity;
+            v->sample    = sample;
+            v->position  = 0;
+            v->phase     = VOICE_ATTACK;
+            v->note_held = true;
             pool->active_count++;
             return v;
         }
@@ -44,41 +46,108 @@ Voice *voice_pool_note_on(VoicePool *pool, uint8_t note, uint8_t velocity, const
 
 void voice_pool_note_off(VoicePool *pool, uint8_t note)
 {
-    /* Phase 2: immediate stop. Phase 3 will add release tails. */
     for (int i = 0; i < MAX_VOICES; i++) {
         Voice *v = &pool->voices[i];
-        if (v->active && v->note == note) {
-            v->active = false;
-            pool->active_count--;
-        }
+        if (v->active && v->note == note)
+            v->note_held = false;
     }
+}
+
+/* Render a single frame from a voice in SUSTAIN phase.
+ * Handles crossfade at loop boundary and wrapping. */
+static inline float render_sustain_frame(Voice *voice, const Sample *s)
+{
+    int loop_len = s->loop_end - s->loop_start;
+    int cf = CROSSFADE_FRAMES;
+
+    /* Clamp crossfade to half the loop length to avoid overlap */
+    if (cf > loop_len / 2)
+        cf = loop_len / 2;
+
+    float val;
+    int dist_to_end = s->loop_end - voice->position;
+
+    if (cf > 0 && dist_to_end <= cf && dist_to_end > 0) {
+        /* Crossfade: blend end of loop with start of loop */
+        float fade_out = (float)dist_to_end / (float)cf;
+        float fade_in  = 1.0f - fade_out;
+        int wrap_pos = s->loop_start + (cf - dist_to_end);
+        val = s->data[voice->position] * fade_out
+            + s->data[wrap_pos] * fade_in;
+    } else {
+        val = s->data[voice->position];
+    }
+
+    voice->position++;
+
+    /* Wrap at loop end back to start (past crossfade region) */
+    if (voice->position >= s->loop_end) {
+        voice->position = s->loop_start + cf;
+        if (voice->position >= s->loop_end)
+            voice->position = s->loop_start;
+    }
+
+    return val;
 }
 
 bool voice_render(Voice *voice, float *buf, int nframes)
 {
     const Sample *s = voice->sample;
-    int remaining = s->frames - voice->position;
-
-    if (remaining <= 0) {
-        voice->active = false;
-        return false;
-    }
-
-    /* Velocity scaling: velocity 127 = full volume */
     float gain = (float)voice->velocity / 127.0f;
 
-    int to_render = (nframes < remaining) ? nframes : remaining;
-    const float *src = s->data + voice->position;
+    for (int i = 0; i < nframes; i++) {
+        /* Bounds check */
+        if (voice->position < 0 || voice->position >= s->frames) {
+            voice->active = false;
+            return false;
+        }
 
-    for (int i = 0; i < to_render; i++)
-        buf[i] += src[i] * gain;
+        float sample_val = 0.0f;
 
-    voice->position += to_render;
+        switch (voice->phase) {
+        case VOICE_ATTACK:
+            sample_val = s->data[voice->position];
+            voice->position++;
 
-    /* If we've reached the end, deactivate */
-    if (voice->position >= s->frames) {
-        voice->active = false;
-        return false;
+            if (!voice->note_held) {
+                /* Note released during attack */
+                if (s->has_loop)
+                    voice->phase = VOICE_RELEASE;
+                else
+                    voice->phase = VOICE_RELEASE;
+                break;
+            }
+
+            if (s->has_loop && voice->position >= s->loop_start)
+                voice->phase = VOICE_SUSTAIN;
+            break;
+
+        case VOICE_SUSTAIN:
+            if (!voice->note_held) {
+                /* Note released — transition to release phase */
+                voice->phase = VOICE_RELEASE;
+                /* Don't render this frame as sustain, let release handle it */
+                sample_val = s->data[voice->position];
+                voice->position++;
+                break;
+            }
+
+            sample_val = render_sustain_frame(voice, s);
+            break;
+
+        case VOICE_RELEASE:
+            sample_val = s->data[voice->position];
+            voice->position++;
+
+            if (voice->position >= s->frames) {
+                voice->active = false;
+                buf[i] += sample_val * gain;
+                return false;
+            }
+            break;
+        }
+
+        buf[i] += sample_val * gain;
     }
 
     return true;

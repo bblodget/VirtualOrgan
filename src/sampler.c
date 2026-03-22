@@ -82,6 +82,20 @@ static int load_sample(SampleBank *bank, const char *path, int note, size_t *byt
     }
 
     sf_readf_float(sf, data, frames);
+
+    /* Read loop points from WAV smpl/instrument chunk */
+    SF_INSTRUMENT inst = {0};
+    bool has_loop = false;
+    int loop_start = 0, loop_end = 0;
+    if (sf_command(sf, SFC_GET_INSTRUMENT, &inst, sizeof(inst)) == SF_TRUE) {
+        if (inst.loop_count > 0) {
+            loop_start = (int)inst.loops[0].start;
+            loop_end   = (int)inst.loops[0].end;
+            if (loop_start >= 0 && loop_end > loop_start && loop_end <= frames)
+                has_loop = true;
+        }
+    }
+
     sf_close(sf);
 
     /* If stereo or more, downmix to mono (take channel 0) */
@@ -98,6 +112,9 @@ static int load_sample(SampleBank *bank, const char *path, int note, size_t *byt
     bank->samples[note].data = data;
     bank->samples[note].frames = frames;
     bank->samples[note].sample_rate = info.samplerate;
+    bank->samples[note].has_loop = has_loop;
+    bank->samples[note].loop_start = loop_start;
+    bank->samples[note].loop_end = loop_end;
     bank->count++;
     *bytes_out += frames * sizeof(float);
     return 0;

@@ -20,13 +20,22 @@
 #include "sampler.h"
 
 #define MAX_VOICES 128
+#define CROSSFADE_FRAMES 64  /* ~1.5ms at 44.1kHz */
+
+typedef enum {
+    VOICE_ATTACK,   /* playing from 0 toward loop_start */
+    VOICE_SUSTAIN,  /* looping between loop_start and loop_end */
+    VOICE_RELEASE,  /* playing from current position to end of sample */
+} VoicePhase;
 
 typedef struct {
     bool         active;
     uint8_t      note;
     uint8_t      velocity;
     const Sample *sample;
-    int          position;  /* current playback position in frames */
+    int          position;   /* current playback position in frames */
+    VoicePhase   phase;
+    bool         note_held;  /* true while key is down */
 } Voice;
 
 typedef struct {

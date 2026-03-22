@@ -16,6 +16,7 @@
 #define SAMPLER_H
 
 #include <stdint.h>
+#include <stdbool.h>
 
 #define MAX_MIDI_NOTES 128
 
@@ -23,6 +24,9 @@ typedef struct {
     float   *data;       /* interleaved sample data (mono float32) */
     int      frames;     /* number of frames */
     int      sample_rate;
+    int      loop_start; /* frame index where sustain loop begins */
+    int      loop_end;   /* frame index where sustain loop ends */
+    bool     has_loop;   /* true if valid loop points were found */
 } Sample;
 
 typedef struct {
