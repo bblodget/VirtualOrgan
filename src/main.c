@@ -22,6 +22,7 @@
 #include "voice.h"
 #include "ring_buffer.h"
 #include "midi.h"
+#include "keyboard.h"
 #include "jack_engine.h"
 
 static volatile int quit = 0;
@@ -34,7 +35,7 @@ static void signal_handler(int sig)
 
 static void usage(const char *prog)
 {
-    fprintf(stderr, "Usage: %s <config.toml> [--fake-midi]\n", prog);
+    fprintf(stderr, "Usage: %s <config.toml> [--fake-midi | --keyboard]\n", prog);
 }
 
 int main(int argc, char **argv)
@@ -46,10 +47,13 @@ int main(int argc, char **argv)
 
     const char *config_path = argv[1];
     int fake_midi = 0;
+    int keyboard_mode = 0;
 
     for (int i = 2; i < argc; i++) {
         if (strcmp(argv[i], "--fake-midi") == 0)
             fake_midi = 1;
+        else if (strcmp(argv[i], "--keyboard") == 0)
+            keyboard_mode = 1;
     }
 
     /* Load config */
@@ -95,13 +99,24 @@ int main(int argc, char **argv)
     ring_buffer_init(&ring_buffer);
 
     /* Start MIDI input */
-    printf("\nStarting MIDI input%s...\n", fake_midi ? " (fake mode)" : "");
-    if (midi_start(&ring_buffer, fake_midi) != 0) {
-        fprintf(stderr, "error: cannot start MIDI thread\n");
-        for (int i = 0; i < config.num_ranks; i++)
-            sampler_free(&banks[i]);
-        free(banks);
-        return 1;
+    if (keyboard_mode) {
+        printf("\nStarting keyboard input...\n");
+        if (keyboard_start(&ring_buffer, &config) != 0) {
+            fprintf(stderr, "error: cannot start keyboard input\n");
+            for (int i = 0; i < config.num_ranks; i++)
+                sampler_free(&banks[i]);
+            free(banks);
+            return 1;
+        }
+    } else {
+        printf("\nStarting MIDI input%s...\n", fake_midi ? " (fake mode)" : "");
+        if (midi_start(&ring_buffer, fake_midi) != 0) {
+            fprintf(stderr, "error: cannot start MIDI thread\n");
+            for (int i = 0; i < config.num_ranks; i++)
+                sampler_free(&banks[i]);
+            free(banks);
+            return 1;
+        }
     }
 
     /* Start JACK engine */
@@ -127,9 +142,12 @@ int main(int argc, char **argv)
     signal(SIGINT, signal_handler);
     signal(SIGTERM, signal_handler);
 
-    printf("\nOrgan engine running. Press Ctrl+C to stop.\n\n");
+    printf("\nOrgan engine running. Press %s to stop.\n\n",
+           keyboard_mode ? "Esc in SDL window" : "Ctrl+C");
 
     while (!quit) {
+        if (keyboard_mode && keyboard_quit_requested())
+            quit = 1;
         printf("\rVoices: %d  ", voice_pool.active_count);
         fflush(stdout);
         usleep(100000);  /* update display 10x/sec */
@@ -138,7 +156,10 @@ int main(int argc, char **argv)
     printf("\n\nShutting down...\n");
 
     jack_engine_stop();
-    midi_stop();
+    if (keyboard_mode)
+        keyboard_stop();
+    else
+        midi_stop();
     for (int i = 0; i < config.num_ranks; i++)
         sampler_free(&banks[i]);
     free(banks);

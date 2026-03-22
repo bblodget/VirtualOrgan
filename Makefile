@@ -1,11 +1,11 @@
 CC      = gcc
 CFLAGS  = -Wall -Wextra -O2 -std=c11 -pthread -D_DEFAULT_SOURCE
-CFLAGS += $(shell pkg-config --cflags jack sndfile alsa)
-LDFLAGS = $(shell pkg-config --libs jack sndfile alsa) -lm -lpthread
+CFLAGS += $(shell pkg-config --cflags jack sndfile alsa sdl2)
+LDFLAGS = $(shell pkg-config --libs jack sndfile alsa sdl2) -lm -lpthread
 
 # Source files
 SRC     = src/main.c src/config.c src/sampler.c src/voice.c src/mixer.c \
-          src/midi.c src/jack_engine.c src/ring_buffer.c
+          src/midi.c src/keyboard.c src/jack_engine.c src/ring_buffer.c
 VENDOR  = vendor/tomlc99/toml.c
 OBJ     = $(SRC:.c=.o) $(VENDOR:.c=.o)
 
@@ -40,11 +40,12 @@ help:
 	@echo "  make help         Show this help"
 	@echo ""
 	@echo "Usage:"
-	@echo "  ./organ-engine <config.toml> [--fake-midi]"
+	@echo "  ./organ-engine <config.toml> [--fake-midi | --keyboard]"
 	@echo ""
 	@echo "Examples:"
 	@echo "  ./organ-engine test/test_config.toml --fake-midi   Test with generated sine waves"
 	@echo "  ./organ-engine test/burea_config.toml --fake-midi  Test with Bureå organ samples"
+	@echo "  ./organ-engine test/burea_config.toml --keyboard   Play with computer keyboard"
 	@echo "  ./organ-engine test/burea_config.toml              Real MIDI keyboard input"
 
 .PHONY: all clean gen-samples help

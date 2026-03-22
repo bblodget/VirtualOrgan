@@ -2,15 +2,15 @@
 
 A custom, config-driven virtual pipe organ engine written in C for Linux. Designed as a dedicated headless appliance for playing sampled pipe organ sounds through a multi-channel speaker system, controlled via an iPad web interface over WiFi.
 
-> **Status: Early Development**
-> The core audio pipeline works — MIDI input, sample playback, voice management, and JACK output. Many features are not yet implemented including multi-channel routing, stop controls, the web interface, and sustain looping. See [`docs/todo.md`](docs/todo.md) for current progress.
+> **Status: Active Development**
+> The core engine works — MIDI input, stereo sample playback with sustain looping and release tails, stop controls via MIDI CC, and JACK output. Not yet implemented: multi-channel routing, divisions/coupling, expression pedals, web interface. See [`docs/todo.md`](docs/todo.md) for current progress.
 
 ## Building
 
 ### Dependencies
 
 ```bash
-sudo apt install jackd2 libjack-jackd2-dev pkg-config libsndfile1-dev libasound2-dev
+sudo apt install jackd2 libjack-jackd2-dev pkg-config libsndfile1-dev libasound2-dev libsdl2-dev
 ```
 
 Say **yes** when asked to enable real-time process priority during the jackd2 install. Your user must be in the `audio` group:
@@ -44,27 +44,50 @@ Download a GrandOrgue-format sample set (e.g., from [Lars Palo](https://familjen
 
 ### Start JACK
 
-The organ engine requires a running JACK audio server:
+The organ engine requires a running JACK audio server. If your system uses **PipeWire** (most modern Linux desktops), use `pw-jack` — no separate JACK server needed:
 
 ```bash
-# With real audio hardware
+# PipeWire (recommended on desktop Linux)
+pw-jack ./organ-engine test/burea_config.toml --fake-midi
+
+# With standalone JACK and real audio hardware
 jackd -d alsa -d hw:0 -r 48000 -p 128 &
+./organ-engine test/burea_config.toml --fake-midi
 
 # Without audio hardware (silent, for testing)
 jackd -d dummy -r 48000 -p 128 &
+./organ-engine test/burea_config.toml --fake-midi
 ```
 
 ### Start the engine
 
 ```bash
-# With fake MIDI (auto-plays a C major scale, no keyboard needed)
-./organ-engine test/test_config.toml --fake-midi
+# Auto-play a C major scale (no keyboard needed)
+pw-jack ./organ-engine test/test_config.toml --fake-midi
 
-# With real MIDI input (requires connecting a MIDI device, see below)
-./organ-engine test/burea_config.toml
+# Play with computer keyboard (SDL2 window for input)
+pw-jack ./organ-engine test/burea_config.toml --keyboard
+
+# Real MIDI keyboard input (requires connecting a MIDI device, see below)
+pw-jack ./organ-engine test/burea_config.toml
 ```
 
-Press `Ctrl+C` to stop.
+Press `Ctrl+C` to stop (or `Esc` in keyboard mode).
+
+### Computer Keyboard Mode
+
+With `--keyboard`, an SDL2 window opens for input. The QWERTY layout maps to a piano:
+
+```
+ 2 3   5 6 7   9 0        (black keys)
+Q W E R T Y U I O P       (white keys: C D E F G A B C D E)
+```
+
+- `[` / `]` — octave down/up
+- `Z X C V B N M` — toggle stops 1-7
+- `Space` — all stops off
+- `H` — print help
+- `Esc` — quit
 
 ### Connecting a MIDI Keyboard
 
@@ -97,7 +120,7 @@ The engine is configured via a TOML file. Example:
 ```toml
 [audio]
 sample_rate = 48000
-buffer_size = 128
+buffer_size = 1024
 jack_client_name = "organ"
 
 [ranks.gedackt8]
@@ -105,7 +128,10 @@ sample_dir = "samples/Burea_Funeral_Chapel/Gedackt8"
 filename_pattern = "{note:03d}-{name}.wav"
 midi_channel = 1
 output_channels = [1, 2]
+engage_cc = 39       # optional: MIDI CC to toggle this rank as a stop
 ```
+
+When `engage_cc` is set, the rank starts disengaged (silent) and is toggled on/off by MIDI CC events. Ranks without `engage_cc` always play.
 
 ### Filename pattern placeholders
 
