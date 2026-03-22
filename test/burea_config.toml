@@ -57,3 +57,9 @@ midi_channel = 1
 [divisions.pedal.stops]
 subbas16 = { rank = "subbas16", engage_cc = 36 }
 pedgedackt8 = { rank = "pedgedackt8", engage_cc = 47 }
+
+# Couplers — CC number from Bureå ODF
+[couplers.pedal_to_manual]
+from = "pedal"
+to = "manual"
+engage_cc = 49

@@ -23,6 +23,7 @@
 #define MAX_PATH_LEN       256
 #define MAX_DIVISIONS      8
 #define MAX_STOPS_PER_DIV  32
+#define MAX_COUPLERS       16
 
 typedef struct {
     char     sample_dir[MAX_PATH_LEN];
@@ -49,6 +50,14 @@ typedef struct {
 } DivisionConfig;
 
 typedef struct {
+    char    name[64];
+    int     from_division;  /* index into divisions[] — where keys are played */
+    int     to_division;    /* index into divisions[] — additional pipes triggered */
+    int     engage_cc;      /* MIDI CC to toggle this coupler */
+    bool    engaged;        /* runtime state, starts false */
+} CouplerConfig;
+
+typedef struct {
     int             sample_rate;
     int             buffer_size;
     char            jack_client_name[64];
@@ -56,6 +65,8 @@ typedef struct {
     int             num_ranks;
     DivisionConfig  divisions[MAX_DIVISIONS];
     int             num_divisions;
+    CouplerConfig   couplers[MAX_COUPLERS];
+    int             num_couplers;
 } OrganConfig;
 
 /* Load config from TOML file. Returns 0 on success, -1 on error. */

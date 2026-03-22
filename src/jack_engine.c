@@ -38,6 +38,8 @@ static int process_callback(jack_nframes_t nframes, void *arg)
                     DivisionConfig *dc = &cfg->divisions[d];
                     if (dc->midi_channel != ev.channel)
                         continue;
+
+                    /* Trigger this division's engaged stops */
                     for (int s = 0; s < dc->num_stops; s++) {
                         StopConfig *sc = &dc->stops[s];
                         if (!sc->engaged || sc->rank_index < 0)
@@ -45,6 +47,25 @@ static int process_callback(jack_nframes_t nframes, void *arg)
                         const Sample *sample = &engine_ctx->sample_banks[sc->rank_index].samples[ev.note];
                         if (sample->data)
                             voice_pool_note_on(engine_ctx->voice_pool, ev.note, ev.velocity, sample, d);
+                    }
+
+                    /* Check couplers: if any couple FROM this division, also trigger the TO division */
+                    for (int c = 0; c < cfg->num_couplers; c++) {
+                        CouplerConfig *coup = &cfg->couplers[c];
+                        if (!coup->engaged || coup->from_division != d)
+                            continue;
+                        int td = coup->to_division;
+                        if (td < 0 || td >= cfg->num_divisions)
+                            continue;
+                        DivisionConfig *to_dc = &cfg->divisions[td];
+                        for (int s = 0; s < to_dc->num_stops; s++) {
+                            StopConfig *sc = &to_dc->stops[s];
+                            if (!sc->engaged || sc->rank_index < 0)
+                                continue;
+                            const Sample *sample = &engine_ctx->sample_banks[sc->rank_index].samples[ev.note];
+                            if (sample->data)
+                                voice_pool_note_on(engine_ctx->voice_pool, ev.note, ev.velocity, sample, td);
+                        }
                     }
                 }
             } else {
@@ -70,6 +91,11 @@ static int process_callback(jack_nframes_t nframes, void *arg)
                     if (ev.note == dc->stops[s].engage_cc)
                         dc->stops[s].engaged = (ev.velocity >= 64);
                 }
+            }
+            /* Coupler toggles */
+            for (int c = 0; c < cfg->num_couplers; c++) {
+                if (ev.note == cfg->couplers[c].engage_cc)
+                    cfg->couplers[c].engaged = (ev.velocity >= 64);
             }
         }
     }

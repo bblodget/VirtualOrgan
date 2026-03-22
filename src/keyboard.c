@@ -92,6 +92,14 @@ static void print_help(void)
         printf("  (no divisions configured — all ranks always play)\n");
     }
 
+    if (organ_config->num_couplers > 0) {
+        printf("  ` = toggle coupler(s):");
+        for (int c = 0; c < organ_config->num_couplers; c++)
+            printf(" %s(%s→%s)", organ_config->couplers[c].name,
+                   organ_config->divisions[organ_config->couplers[c].from_division].name,
+                   organ_config->divisions[organ_config->couplers[c].to_division].name);
+        printf("\n");
+    }
     printf("  -/= = gain down/up  Space = all stops off  H = this help\n");
     printf("  Esc to quit\n\n");
 }
@@ -140,6 +148,20 @@ static void *keyboard_thread(void *arg)
                     quit_requested = 1;
                     running = 0;
                     break;
+                }
+
+                /* Backtick = toggle coupler(s) */
+                if (sc == SDL_SCANCODE_GRAVE && organ_config->num_couplers > 0) {
+                    for (int c = 0; c < organ_config->num_couplers; c++) {
+                        const CouplerConfig *coup = &organ_config->couplers[c];
+                        bool new_state = !coup->engaged;
+                        uint8_t cc_val = new_state ? 127 : 0;
+                        MidiEvent cc = {MIDI_CC, 1, (uint8_t)coup->engage_cc, cc_val};
+                        ring_buffer_push(ring_buf, &cc);
+                        printf("Coupler %s: %s\n", coup->name,
+                               new_state ? "ON" : "OFF");
+                    }
+                    continue;
                 }
 
                 /* Tab = cycle division */

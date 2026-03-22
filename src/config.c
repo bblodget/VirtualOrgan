@@ -163,6 +163,58 @@ int config_load(OrganConfig *cfg, const char *path)
         }
     }
 
+    /* [couplers.*] sections (optional) */
+    toml_table_t *couplers = toml_table_in(root, "couplers");
+    if (couplers) {
+        int nc = toml_table_ntab(couplers);
+        for (int c = 0; c < nc && cfg->num_couplers < MAX_COUPLERS; c++) {
+            const char *coup_key = toml_key_in(couplers, c);
+            toml_table_t *coup = toml_table_in(couplers, coup_key);
+            if (!coup) continue;
+
+            CouplerConfig *cc = &cfg->couplers[cfg->num_couplers];
+            strncpy(cc->name, coup_key, sizeof(cc->name) - 1);
+            cc->from_division = -1;
+            cc->to_division = -1;
+            cc->engaged = false;
+
+            toml_datum_t val;
+
+            val = toml_string_in(coup, "from");
+            if (val.ok) {
+                for (int d = 0; d < cfg->num_divisions; d++) {
+                    if (strcmp(cfg->divisions[d].name, val.u.s) == 0) {
+                        cc->from_division = d;
+                        break;
+                    }
+                }
+                if (cc->from_division < 0)
+                    fprintf(stderr, "config: coupler '%s' references unknown division '%s'\n",
+                            coup_key, val.u.s);
+                free(val.u.s);
+            }
+
+            val = toml_string_in(coup, "to");
+            if (val.ok) {
+                for (int d = 0; d < cfg->num_divisions; d++) {
+                    if (strcmp(cfg->divisions[d].name, val.u.s) == 0) {
+                        cc->to_division = d;
+                        break;
+                    }
+                }
+                if (cc->to_division < 0)
+                    fprintf(stderr, "config: coupler '%s' references unknown division '%s'\n",
+                            coup_key, val.u.s);
+                free(val.u.s);
+            }
+
+            val = toml_int_in(coup, "engage_cc");
+            if (val.ok) cc->engage_cc = (int)val.u.i;
+
+            cfg->num_couplers++;
+        }
+    }
+
     toml_free(root);
     return 0;
 }
@@ -200,6 +252,17 @@ void config_print(const OrganConfig *cfg)
                        sc->rank_index >= 0 ? cfg->ranks[sc->rank_index].name : "?",
                        sc->engage_cc);
             }
+        }
+    }
+
+    if (cfg->num_couplers > 0) {
+        printf("  couplers: %d\n", cfg->num_couplers);
+        for (int c = 0; c < cfg->num_couplers; c++) {
+            const CouplerConfig *cc = &cfg->couplers[c];
+            printf("    [%s] %s → %s (cc=%d)\n", cc->name,
+                   cc->from_division >= 0 ? cfg->divisions[cc->from_division].name : "?",
+                   cc->to_division >= 0 ? cfg->divisions[cc->to_division].name : "?",
+                   cc->engage_cc);
         }
     }
 }
