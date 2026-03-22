@@ -28,11 +28,15 @@ static int process_callback(jack_nframes_t nframes, void *arg)
     (void)arg;
 
     /* Drain MIDI events from ring buffer */
+    OrganConfig *cfg = engine_ctx->config;
     MidiEvent ev;
     while (ring_buffer_pop(engine_ctx->ring_buffer, &ev)) {
         if (ev.type == MIDI_NOTE_ON && ev.velocity > 0) {
-            /* Trigger a voice for each loaded rank */
             for (int r = 0; r < engine_ctx->num_banks; r++) {
+                RankConfig *rc = &cfg->ranks[r];
+                /* Skip disengaged stops (if stop controls are configured) */
+                if (cfg->has_stops && !rc->engaged)
+                    continue;
                 const Sample *sample = &engine_ctx->sample_banks[r].samples[ev.note];
                 if (sample->data)
                     voice_pool_note_on(engine_ctx->voice_pool, ev.note, ev.velocity, sample);
@@ -40,6 +44,12 @@ static int process_callback(jack_nframes_t nframes, void *arg)
         } else if (ev.type == MIDI_NOTE_OFF ||
                    (ev.type == MIDI_NOTE_ON && ev.velocity == 0)) {
             voice_pool_note_off(engine_ctx->voice_pool, ev.note);
+        } else if (ev.type == MIDI_CC) {
+            /* Check if CC matches a rank's stop engage control */
+            for (int r = 0; r < cfg->num_ranks; r++) {
+                if (cfg->ranks[r].engage_cc >= 0 && ev.note == cfg->ranks[r].engage_cc)
+                    cfg->ranks[r].engaged = (ev.velocity >= 64);
+            }
         }
     }
 

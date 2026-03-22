@@ -30,7 +30,19 @@ static void *fake_midi_thread(void *arg)
     const uint8_t scale[] = {60, 62, 64, 65, 67, 69, 71, 72};  /* C major scale */
     int idx = 0;
 
-    printf("midi: fake mode — playing C major scale\n");
+    printf("midi: fake mode — engaging stops then playing C major scale\n");
+
+    /* Engage a few stops via CC before playing notes.
+     * CC value >= 64 = engaged.  Uses Bureå CC numbers:
+     * 39 = Gedackt 8', 37 = Salicional 8', 36 = Subbas 16' */
+    usleep(500000);  /* wait 500ms for engine to settle */
+    MidiEvent cc1 = {MIDI_CC, 1, 39, 127};  /* Gedackt 8' ON */
+    ring_buffer_push(rb, &cc1);
+    MidiEvent cc2 = {MIDI_CC, 1, 37, 127};  /* Salicional 8' ON */
+    ring_buffer_push(rb, &cc2);
+    MidiEvent cc3 = {MIDI_CC, 1, 36, 127};  /* Subbas 16' ON */
+    ring_buffer_push(rb, &cc3);
+    usleep(200000);  /* brief pause before playing */
 
     while (running) {
         uint8_t note = scale[idx % 8];
@@ -46,6 +58,12 @@ static void *fake_midi_thread(void *arg)
         ring_buffer_push(rb, &off);
 
         usleep(100000);  /* gap of 100ms */
+
+        /* After one full scale, engage Principal 2' to demonstrate adding a stop */
+        if (idx == 7) {
+            MidiEvent cc4 = {MIDI_CC, 1, 45, 127};  /* Principal 2' ON */
+            ring_buffer_push(rb, &cc4);
+        }
 
         idx++;
     }

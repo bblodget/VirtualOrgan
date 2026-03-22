@@ -3,36 +3,41 @@ sample_rate = 48000
 buffer_size = 1024
 jack_client_name = "organ"
 
-# Manual stops (5 ranks)
+# Manual stops (5 ranks) — CC numbers from Bureå ODF
 [ranks.gedackt8]
 sample_dir = "samples/Burea_Funeral_Chapel/Gedackt8"
 filename_pattern = "{note:03d}-{name}.wav"
 midi_channel = 1
 output_channels = [1, 2]
+engage_cc = 39
 
 [ranks.salicional8]
 sample_dir = "samples/Burea_Funeral_Chapel/Salicional8"
 filename_pattern = "{note:03d}-{name}.wav"
 midi_channel = 1
 output_channels = [1, 2]
+engage_cc = 37
 
 [ranks.voixceleste8]
 sample_dir = "samples/Burea_Funeral_Chapel/VoixCeleste8"
 filename_pattern = "{note:03d}-{name}.wav"
 midi_channel = 1
 output_channels = [1, 2]
+engage_cc = 41
 
 [ranks.rorflojt4]
 sample_dir = "samples/Burea_Funeral_Chapel/Rorflojt4"
 filename_pattern = "{note:03d}-{name}.wav"
 midi_channel = 1
 output_channels = [1, 2]
+engage_cc = 43
 
 [ranks.principal2]
 sample_dir = "samples/Burea_Funeral_Chapel/Principal2"
 filename_pattern = "{note:03d}-{name}.wav"
 midi_channel = 1
 output_channels = [1, 2]
+engage_cc = 45
 
 # Pedal stops (2 ranks)
 [ranks.pedgedackt8]
@@ -40,9 +45,11 @@ sample_dir = "samples/Burea_Funeral_Chapel/PedGedackt8"
 filename_pattern = "{note:03d}-{name}.wav"
 midi_channel = 1
 output_channels = [1, 2]
+engage_cc = 47
 
 [ranks.subbas16]
 sample_dir = "samples/Burea_Funeral_Chapel/Subbas16"
 filename_pattern = "{note:03d}-{name}.wav"
 midi_channel = 1
 output_channels = [1, 2]
+engage_cc = 36

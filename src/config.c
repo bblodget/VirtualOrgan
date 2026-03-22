@@ -91,6 +91,14 @@ int config_load(OrganConfig *cfg, const char *path)
             val = toml_int_in(rank, "midi_channel");
             if (val.ok) rc->midi_channel = (int)val.u.i;
 
+            rc->engage_cc = -1;  /* default: no stop control */
+            val = toml_int_in(rank, "engage_cc");
+            if (val.ok) {
+                rc->engage_cc = (int)val.u.i;
+                rc->engaged = false;
+                cfg->has_stops = true;
+            }
+
             toml_array_t *channels = toml_array_in(rank, "output_channels");
             if (channels) {
                 int nc = toml_array_nelem(channels);
@@ -124,6 +132,8 @@ void config_print(const OrganConfig *cfg)
         printf("      sample_dir: %s\n", rc->sample_dir);
         printf("      filename_pattern: %s\n", rc->filename_pattern);
         printf("      midi_channel: %d\n", rc->midi_channel);
+        if (rc->engage_cc >= 0)
+            printf("      engage_cc: %d\n", rc->engage_cc);
         printf("      output_channels:");
         for (int j = 0; j < rc->num_output_channels; j++)
             printf(" %d", rc->output_channels[j]);

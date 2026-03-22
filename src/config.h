@@ -16,6 +16,7 @@
 #define CONFIG_H
 
 #include <stdint.h>
+#include <stdbool.h>
 
 #define MAX_RANKS          64
 #define MAX_OUTPUT_CHANNELS 32
@@ -28,6 +29,8 @@ typedef struct {
     int      output_channels[MAX_OUTPUT_CHANNELS];
     int      num_output_channels;
     char     name[64];
+    int      engage_cc;     /* MIDI CC to toggle this rank as a stop (-1 = none) */
+    bool     engaged;       /* runtime state: is this stop on? */
 } RankConfig;
 
 typedef struct {
@@ -36,6 +39,7 @@ typedef struct {
     char        jack_client_name[64];
     RankConfig  ranks[MAX_RANKS];
     int         num_ranks;
+    bool        has_stops;  /* true if any rank has engage_cc set */
 } OrganConfig;
 
 /* Load config from TOML file. Returns 0 on success, -1 on error. */

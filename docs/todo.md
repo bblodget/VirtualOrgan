@@ -44,7 +44,8 @@
 
 ## Phase 5 — Organ Features
 
-- [ ] Stop controls (engage/disengage ranks via MIDI CC)
+- [x] Stop controls (engage/disengage ranks via MIDI CC, per-rank engage_cc)
+- [ ] Separate [stops] config section for stop→rank indirection (multi-rank stops, split stops)
 - [ ] Division grouping (Great, Swell, Pedal)
 - [ ] Coupling (one division triggers another)
 - [ ] Expression pedals (per-division volume via MIDI CC)
