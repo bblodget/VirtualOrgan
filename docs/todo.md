@@ -45,7 +45,7 @@
 
 ## Phase 5 — Organ Features
 
-- [ ] Coupling (one division triggers another)
+- [x] Coupling (one division triggers another, directional, CC-toggled)
 - [ ] Multi-rank stops (one stop triggers multiple ranks, e.g. Mixture)
 
 ## Phase 6 — Web Interface
