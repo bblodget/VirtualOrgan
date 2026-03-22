@@ -21,7 +21,7 @@
 #define MAX_MIDI_NOTES 128
 
 typedef struct {
-    float   *data;       /* interleaved sample data (mono float32) */
+    float   *data;       /* sample data (mono float32) */
     int      frames;     /* number of frames */
     int      sample_rate;
     int      loop_start; /* frame index where sustain loop begins */
@@ -37,8 +37,9 @@ typedef struct {
 /* Load all WAV files from directory into bank.
  * Pattern uses {note} for MIDI note number and {name} for note name.
  * Examples: "{note:03d}.wav", "{note:03d}-{name}.wav"
+ * If bytes_out is non-NULL, adds the total bytes loaded to *bytes_out.
  * Returns number of samples loaded, or -1 on error. */
-int sampler_load(SampleBank *bank, const char *dir, const char *pattern);
+int sampler_load(SampleBank *bank, const char *dir, const char *pattern, size_t *bytes_out);
 
 /* Free all loaded samples. */
 void sampler_free(SampleBank *bank);

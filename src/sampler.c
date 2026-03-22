@@ -120,7 +120,7 @@ static int load_sample(SampleBank *bank, const char *path, int note, size_t *byt
     return 0;
 }
 
-int sampler_load(SampleBank *bank, const char *dir, const char *pattern)
+int sampler_load(SampleBank *bank, const char *dir, const char *pattern, size_t *bytes_out)
 {
     memset(bank, 0, sizeof(*bank));
     size_t total_bytes = 0;
@@ -139,6 +139,10 @@ int sampler_load(SampleBank *bank, const char *dir, const char *pattern)
 
     printf("sampler: loaded %d samples from '%s' (%.1f MB)\n",
            bank->count, dir, total_bytes / (1024.0 * 1024.0));
+
+    if (bytes_out)
+        *bytes_out += total_bytes;
+
     return bank->count;
 }
 

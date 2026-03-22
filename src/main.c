@@ -70,15 +70,22 @@ int main(int argc, char **argv)
         return 1;
     }
 
+    size_t total_bytes = 0;
+    int total_samples = 0;
     for (int i = 0; i < config.num_ranks; i++) {
         printf("\nLoading samples for rank '%s'...\n", config.ranks[i].name);
-        if (sampler_load(&banks[i], config.ranks[i].sample_dir, config.ranks[i].filename_pattern) < 0) {
+        int n = sampler_load(&banks[i], config.ranks[i].sample_dir,
+                             config.ranks[i].filename_pattern, &total_bytes);
+        if (n < 0) {
             for (int j = 0; j < i; j++)
                 sampler_free(&banks[j]);
             free(banks);
             return 1;
         }
+        total_samples += n;
     }
+    printf("\nTotal: %d ranks, %d samples, %.1f MB\n",
+           config.num_ranks, total_samples, total_bytes / (1024.0 * 1024.0));
 
     /* Initialize voice pool and ring buffer */
     VoicePool voice_pool;
