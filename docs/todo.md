@@ -20,7 +20,6 @@
 ## Up Next
 
 - [ ] Test at Dad's house with speaker system
-- [ ] Stereo sample playback (currently downmixing to mono)
 
 ## Completed (continued)
 
@@ -36,12 +35,12 @@
 - [x] Read loop points from WAV file via libsndfile SF_INSTRUMENT API
 - [x] Three-phase voice rendering (attack → sustain → release)
 - [x] Total sample memory usage reporting
+- [x] Stereo sample playback (N-channel pipeline, no more mono downmix)
 
 ## Phase 4 — Multi-Channel Routing
 
 - [ ] Per-division output channel assignment
 - [ ] Multiple JACK output port pairs
-- [ ] Stereo sample playback (keep L/R channels instead of downmixing)
 
 ## Phase 5 — Organ Features
 
