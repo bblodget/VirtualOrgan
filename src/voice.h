@@ -38,7 +38,7 @@ typedef struct {
     VoicePhase   phase;
     bool         note_held;  /* true while key is down */
     int          xfade_from; /* source position for release crossfade */
-    int          xfade_to;   /* destination position (loop_end) */
+    int          xfade_to;   /* destination position in release tail */
     int          xfade_pos;  /* progress counter (0 to CROSSFADE_FRAMES) */
 } Voice;
 
