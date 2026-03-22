@@ -302,9 +302,10 @@ Everything above the ring buffer can allocate memory, read files, and make syste
 At startup, the engine reads a TOML configuration file that defines:
 
 - **Audio settings**: sample rate, buffer size, JACK client name
-- **Ranks**: each rank maps a sample directory to a MIDI channel and output channels
+- **Ranks**: each rank maps a sample directory to output channels
+- **Divisions**: each division has a MIDI channel, a set of stops (referencing ranks), and an optional expression pedal CC
 
-The config is parsed once at startup using the `tomlc99` library and stored in an `OrganConfig` struct that the rest of the engine reads (but never modifies at runtime).
+The config is parsed once at startup using the `tomlc99` library and stored in an `OrganConfig` struct. Most fields are read-only, but stop engaged state and division expression gain are updated at runtime by MIDI CC events in the JACK callback (using simple atomic-safe writes).
 
 ### Sample Loader (`sampler.c`)
 
@@ -328,7 +329,7 @@ In Phase 2, note-off immediately silences the voice. Later phases will add a **r
 
 ### Mixer (`mixer.c`)
 
-The mixer iterates over all active voices, renders each one into the output buffer, and sums them together. In Phase 2, this produces a simple mono mix duplicated to both stereo channels. Later phases will route voices to specific output channels based on their division.
+The mixer iterates over all active voices, renders each one into the output buffer, and sums them together. Each voice carries a division index, allowing the mixer to apply per-division expression gain (from swell pedal CC). Currently all voices output to a single stereo pair; future multi-channel routing will send divisions to different speaker groups.
 
 ### JACK Engine (`jack_engine.c`)
 
