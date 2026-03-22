@@ -98,25 +98,36 @@ static int load_sample(SampleBank *bank, const char *path, int note, size_t *byt
 
     sf_close(sf);
 
-    /* If stereo or more, downmix to mono (take channel 0) */
-    if (info.channels > 1) {
-        float *mono = malloc(frames * sizeof(float));
-        if (mono) {
-            for (int i = 0; i < frames; i++)
-                mono[i] = data[i * info.channels];
-            free(data);
-            data = mono;
-        }
+    /* De-interleave into separate per-channel buffers */
+    int nch = info.channels;
+    float **channels = malloc(nch * sizeof(float *));
+    if (!channels) {
+        free(data);
+        return -1;
     }
+    for (int ch = 0; ch < nch; ch++) {
+        channels[ch] = malloc(frames * sizeof(float));
+        if (!channels[ch]) {
+            for (int j = 0; j < ch; j++)
+                free(channels[j]);
+            free(channels);
+            free(data);
+            return -1;
+        }
+        for (int i = 0; i < frames; i++)
+            channels[ch][i] = data[i * nch + ch];
+    }
+    free(data);
 
-    bank->samples[note].data = data;
+    bank->samples[note].data = channels;
+    bank->samples[note].channels = nch;
     bank->samples[note].frames = frames;
     bank->samples[note].sample_rate = info.samplerate;
     bank->samples[note].has_loop = has_loop;
     bank->samples[note].loop_start = loop_start;
     bank->samples[note].loop_end = loop_end;
     bank->count++;
-    *bytes_out += frames * sizeof(float);
+    *bytes_out += frames * nch * sizeof(float);
     return 0;
 }
 
@@ -149,8 +160,13 @@ int sampler_load(SampleBank *bank, const char *dir, const char *pattern, size_t 
 void sampler_free(SampleBank *bank)
 {
     for (int i = 0; i < MAX_MIDI_NOTES; i++) {
-        free(bank->samples[i].data);
-        bank->samples[i].data = NULL;
+        Sample *s = &bank->samples[i];
+        if (s->data) {
+            for (int ch = 0; ch < s->channels; ch++)
+                free(s->data[ch]);
+            free(s->data);
+            s->data = NULL;
+        }
     }
     bank->count = 0;
 }

@@ -435,7 +435,7 @@ MIDI velocity (0–127) controls how loud a note plays. We convert it to a linea
 float gain = velocity / 127.0f;
 ```
 
-Each sample value is multiplied by this gain during rendering. With multiple voices playing simultaneously, the summed output can exceed the range [-1.0, 1.0], which causes **clipping** (harsh distortion). Later phases will add a master limiter to prevent this.
+Each sample value is multiplied by this gain during rendering. With multiple voices playing simultaneously, the summed output can exceed the range [-1.0, 1.0], which causes **clipping** (harsh distortion). The mixer applies a master gain (currently 0.10) to reduce the summed level, and uses `tanhf()` soft clipping as a safety net — smoothly compressing any peaks that still exceed ±1.0 instead of hard clipping.
 
 ### The Three Phases of a Pipe Sound
 
@@ -447,7 +447,7 @@ A real organ pipe's sound has three distinct phases:
 
 3. **Release** — the decay after the key is released. The pipe doesn't stop instantly; it rings down over 50–500ms. This release tail is what gives the organ its spacious, reverberant character.
 
-In Phase 2, we play the full sample from start to finish and stop immediately on note-off. Phase 3 will implement proper looping and release tails with crossfades.
+Our engine implements all three phases. Loop points are read from the WAV file's `smpl` chunk at load time via libsndfile's `SF_INSTRUMENT` API. During playback, the voice starts in the attack phase, transitions to sustain looping when it reaches `loop_start`, and enters the release phase when the key is released — playing through the remaining sample data to capture the natural decay. A 64-frame crossfade at the loop boundary prevents clicks at the seam. Samples without loop metadata play linearly from start to finish.
 
 ### Test Samples
 

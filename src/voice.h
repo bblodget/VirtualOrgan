@@ -51,8 +51,10 @@ Voice *voice_pool_note_on(VoicePool *pool, uint8_t note, uint8_t velocity, const
 /* Deactivate all voices playing the given note. */
 void voice_pool_note_off(VoicePool *pool, uint8_t note);
 
-/* Render nframes of audio from a single voice into buf (additive).
+/* Render nframes of audio from a single voice into output buffers (additive).
+ * bufs is an array of num_channels output buffers.
+ * Mono samples are duplicated to all channels.
  * Returns false if voice finished and was deactivated. */
-bool voice_render(Voice *voice, float *buf, int nframes);
+bool voice_render(Voice *voice, float **bufs, int num_channels, int nframes);
 
 #endif

@@ -17,8 +17,8 @@
 
 #include "voice.h"
 
-/* Render all active voices into a stereo output buffer.
- * left and right must have room for nframes floats each. */
-void mixer_render(VoicePool *pool, float *left, float *right, int nframes);
+/* Render all active voices into output buffers.
+ * bufs is an array of num_channels output buffers, each with nframes floats. */
+void mixer_render(VoicePool *pool, float **bufs, int num_channels, int nframes);
 
 #endif

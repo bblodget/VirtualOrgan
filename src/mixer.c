@@ -29,27 +29,27 @@ static inline float soft_clip(float x)
     return x;
 }
 
-void mixer_render(VoicePool *pool, float *left, float *right, int nframes)
+void mixer_render(VoicePool *pool, float **bufs, int num_channels, int nframes)
 {
     /* Clear output buffers */
-    memset(left, 0, nframes * sizeof(float));
-    memset(right, 0, nframes * sizeof(float));
+    for (int ch = 0; ch < num_channels; ch++)
+        memset(bufs[ch], 0, nframes * sizeof(float));
 
-    /* Render each active voice into a mono mix buffer */
+    /* Render each active voice into output buffers */
     for (int i = 0; i < MAX_VOICES; i++) {
         Voice *v = &pool->voices[i];
         if (!v->active)
             continue;
 
-        bool still_active = voice_render(v, left, nframes);
+        bool still_active = voice_render(v, bufs, num_channels, nframes);
 
         if (!still_active)
             pool->active_count--;
     }
 
-    /* Apply master gain and soft clipping, duplicate to stereo */
-    for (int i = 0; i < nframes; i++) {
-        left[i] = soft_clip(left[i] * MASTER_GAIN);
-        right[i] = left[i];
+    /* Apply master gain and soft clipping to all channels */
+    for (int ch = 0; ch < num_channels; ch++) {
+        for (int i = 0; i < nframes; i++)
+            bufs[ch][i] = soft_clip(bufs[ch][i] * MASTER_GAIN);
     }
 }

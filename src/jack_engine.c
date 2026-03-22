@@ -44,11 +44,13 @@ static int process_callback(jack_nframes_t nframes, void *arg)
     }
 
     /* Get JACK output buffers */
-    float *left  = (float *)jack_port_get_buffer(port_left, nframes);
-    float *right = (float *)jack_port_get_buffer(port_right, nframes);
+    float *bufs[2] = {
+        (float *)jack_port_get_buffer(port_left, nframes),
+        (float *)jack_port_get_buffer(port_right, nframes),
+    };
 
     /* Render all voices into output */
-    mixer_render(engine_ctx->voice_pool, left, right, (int)nframes);
+    mixer_render(engine_ctx->voice_pool, bufs, 2, (int)nframes);
 
     return 0;
 }

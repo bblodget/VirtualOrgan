@@ -19,24 +19,29 @@
 
 ## Up Next
 
+- [ ] Test at Dad's house with speaker system
+- [ ] Stereo sample playback (currently downmixing to mono)
+
+## Completed (continued)
+
 - [x] Test with real audio output on the Minix (JACK + ALSA driver)
 - [x] Test with MIDI keyboard (USB MIDI → ALSA → organ engine)
-- [ ] Test at Dad's house with speaker system
-- [ ] Add remaining Bureå ranks to config (all 7 ranks)
 - [x] Install PREEMPT_RT kernel for low-latency audio
-
-## Phase 3 — Voice Management
-
-- [ ] Sustain looping (seamless loop using WAV cue markers)
-- [ ] Release tails (decay after note-off instead of instant silence)
-- [ ] Crossfades at loop boundaries
-- [ ] Read loop points from WAV file cue metadata
+- [x] Add remaining Bureå ranks to config (all 7 ranks)
+- [x] Load all ranks simultaneously (one SampleBank per rank)
+- [x] Master gain adjustment for multi-rank playback
+- [x] Sustain looping (seamless loop using WAV smpl chunk metadata)
+- [x] Release tails (natural decay after note-off)
+- [x] Crossfades at loop boundaries (64-frame crossfade)
+- [x] Read loop points from WAV file via libsndfile SF_INSTRUMENT API
+- [x] Three-phase voice rendering (attack → sustain → release)
+- [x] Total sample memory usage reporting
 
 ## Phase 4 — Multi-Channel Routing
 
 - [ ] Per-division output channel assignment
 - [ ] Multiple JACK output port pairs
-- [ ] Load multiple ranks simultaneously
+- [ ] Stereo sample playback (keep L/R channels instead of downmixing)
 
 ## Phase 5 — Organ Features
 

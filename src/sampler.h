@@ -21,8 +21,9 @@
 #define MAX_MIDI_NOTES 128
 
 typedef struct {
-    float   *data;       /* sample data (mono float32) */
-    int      frames;     /* number of frames */
+    float  **data;       /* per-channel sample buffers: data[channel][frame] */
+    int      channels;   /* number of channels (1=mono, 2=stereo, etc.) */
+    int      frames;     /* number of frames per channel */
     int      sample_rate;
     int      loop_start; /* frame index where sustain loop begins */
     int      loop_end;   /* frame index where sustain loop ends */
