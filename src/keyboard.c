@@ -16,6 +16,7 @@
 #include <pthread.h>
 #include <SDL2/SDL.h>
 #include "keyboard.h"
+#include "mixer.h"
 
 /* QWERTY piano key mapping: scancode → semitone offset from C.
  * -1 means not a note key. */
@@ -90,7 +91,7 @@ static void print_help(void)
     if (count == 0)
         printf("(no stops configured)");
     printf("\n");
-    printf("  Space = all stops off  H = this help\n");
+    printf("  -/= = gain down/up  Space = all stops off  H = this help\n");
     printf("  Esc to quit\n\n");
 }
 
@@ -175,6 +176,18 @@ static void *keyboard_thread(void *arg)
                 /* H = print help */
                 if (sc == SDL_SCANCODE_H) {
                     print_help();
+                    continue;
+                }
+
+                /* Gain controls: - / = */
+                if (sc == SDL_SCANCODE_MINUS) {
+                    mixer_set_gain(mixer_get_gain() * 0.7f);
+                    printf("Gain: %.3f\n", mixer_get_gain());
+                    continue;
+                }
+                if (sc == SDL_SCANCODE_EQUALS) {
+                    mixer_set_gain(mixer_get_gain() * 1.4f);
+                    printf("Gain: %.3f\n", mixer_get_gain());
                     continue;
                 }
 

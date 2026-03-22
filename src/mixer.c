@@ -16,9 +16,8 @@
 #include <string.h>
 #include "mixer.h"
 
-/* Master gain to prevent clipping when multiple voices play.
- * With 7 ranks each note triggers 7 voices, so keep gain conservative. */
-#define MASTER_GAIN 0.10f
+/* Master gain — adjustable at runtime via keyboard controls */
+static float master_gain = 0.10f;
 
 /* Soft clamp to prevent harsh digital clipping.
  * Uses tanh for a smooth saturation curve. */
@@ -48,8 +47,21 @@ void mixer_render(VoicePool *pool, float **bufs, int num_channels, int nframes)
     }
 
     /* Apply master gain and soft clipping to all channels */
+    float g = master_gain;
     for (int ch = 0; ch < num_channels; ch++) {
         for (int i = 0; i < nframes; i++)
-            bufs[ch][i] = soft_clip(bufs[ch][i] * MASTER_GAIN);
+            bufs[ch][i] = soft_clip(bufs[ch][i] * g);
     }
+}
+
+float mixer_get_gain(void)
+{
+    return master_gain;
+}
+
+void mixer_set_gain(float gain)
+{
+    if (gain < 0.01f) gain = 0.01f;
+    if (gain > 2.0f) gain = 2.0f;
+    master_gain = gain;
 }

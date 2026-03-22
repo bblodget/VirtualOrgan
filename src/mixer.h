@@ -21,4 +21,8 @@
  * bufs is an array of num_channels output buffers, each with nframes floats. */
 void mixer_render(VoicePool *pool, float **bufs, int num_channels, int nframes);
 
+/* Get/set master gain (0.01 to 2.0). */
+float mixer_get_gain(void);
+void mixer_set_gain(float gain);
+
 #endif

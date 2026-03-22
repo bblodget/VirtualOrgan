@@ -23,9 +23,10 @@
 #define CROSSFADE_FRAMES 64  /* ~1.5ms at 44.1kHz */
 
 typedef enum {
-    VOICE_ATTACK,   /* playing from 0 toward loop_start */
-    VOICE_SUSTAIN,  /* looping between loop_start and loop_end */
-    VOICE_RELEASE,  /* playing from current position to end of sample */
+    VOICE_ATTACK,        /* playing from 0 toward loop_start */
+    VOICE_SUSTAIN,       /* looping between loop_start and loop_end */
+    VOICE_RELEASE_XFADE, /* crossfading from current pos to release tail */
+    VOICE_RELEASE,       /* playing release tail to end of sample */
 } VoicePhase;
 
 typedef struct {
@@ -36,6 +37,9 @@ typedef struct {
     int          position;   /* current playback position in frames */
     VoicePhase   phase;
     bool         note_held;  /* true while key is down */
+    int          xfade_from; /* source position for release crossfade */
+    int          xfade_to;   /* destination position (loop_end) */
+    int          xfade_pos;  /* progress counter (0 to CROSSFADE_FRAMES) */
 } Voice;
 
 typedef struct {
