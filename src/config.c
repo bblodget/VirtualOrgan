@@ -88,17 +88,6 @@ int config_load(OrganConfig *cfg, const char *path)
                 strncpy(rc->filename_pattern, "{note:03d}.wav", sizeof(rc->filename_pattern) - 1);
             }
 
-            val = toml_int_in(rank, "midi_channel");
-            if (val.ok) rc->midi_channel = (int)val.u.i;
-
-            rc->engage_cc = -1;  /* default: no stop control */
-            val = toml_int_in(rank, "engage_cc");
-            if (val.ok) {
-                rc->engage_cc = (int)val.u.i;
-                rc->engaged = false;
-                cfg->has_stops = true;
-            }
-
             toml_array_t *channels = toml_array_in(rank, "output_channels");
             if (channels) {
                 int nc = toml_array_nelem(channels);
@@ -111,6 +100,66 @@ int config_load(OrganConfig *cfg, const char *path)
             }
 
             cfg->num_ranks++;
+        }
+    }
+
+    /* [divisions.*] sections (optional — if absent, all ranks always play) */
+    toml_table_t *divisions = toml_table_in(root, "divisions");
+    if (divisions) {
+        int nd = toml_table_ntab(divisions);
+        for (int d = 0; d < nd && cfg->num_divisions < MAX_DIVISIONS; d++) {
+            const char *div_key = toml_key_in(divisions, d);
+            toml_table_t *div = toml_table_in(divisions, div_key);
+            if (!div) continue;
+
+            DivisionConfig *dc = &cfg->divisions[cfg->num_divisions];
+            strncpy(dc->name, div_key, sizeof(dc->name) - 1);
+            dc->expression_cc = -1;
+            dc->expression_gain = 1.0f;
+
+            toml_datum_t val;
+            val = toml_int_in(div, "midi_channel");
+            if (val.ok) dc->midi_channel = (int)val.u.i;
+
+            val = toml_int_in(div, "expression_cc");
+            if (val.ok) dc->expression_cc = (int)val.u.i;
+
+            /* Parse stops within this division */
+            toml_table_t *stops = toml_table_in(div, "stops");
+            if (stops) {
+                int ns = toml_table_ntab(stops);
+                for (int s = 0; s < ns && dc->num_stops < MAX_STOPS_PER_DIV; s++) {
+                    const char *stop_key = toml_key_in(stops, s);
+                    toml_table_t *stop = toml_table_in(stops, stop_key);
+                    if (!stop) continue;
+
+                    StopConfig *sc = &dc->stops[dc->num_stops];
+                    strncpy(sc->name, stop_key, sizeof(sc->name) - 1);
+                    sc->engaged = false;
+                    sc->rank_index = -1;
+
+                    val = toml_string_in(stop, "rank");
+                    if (val.ok) {
+                        for (int r = 0; r < cfg->num_ranks; r++) {
+                            if (strcmp(cfg->ranks[r].name, val.u.s) == 0) {
+                                sc->rank_index = r;
+                                break;
+                            }
+                        }
+                        if (sc->rank_index < 0)
+                            fprintf(stderr, "config: stop '%s' references unknown rank '%s'\n",
+                                    stop_key, val.u.s);
+                        free(val.u.s);
+                    }
+
+                    val = toml_int_in(stop, "engage_cc");
+                    if (val.ok) sc->engage_cc = (int)val.u.i;
+
+                    dc->num_stops++;
+                }
+            }
+
+            cfg->num_divisions++;
         }
     }
 
@@ -131,12 +180,26 @@ void config_print(const OrganConfig *cfg)
         printf("    [%s]\n", rc->name);
         printf("      sample_dir: %s\n", rc->sample_dir);
         printf("      filename_pattern: %s\n", rc->filename_pattern);
-        printf("      midi_channel: %d\n", rc->midi_channel);
-        if (rc->engage_cc >= 0)
-            printf("      engage_cc: %d\n", rc->engage_cc);
         printf("      output_channels:");
         for (int j = 0; j < rc->num_output_channels; j++)
             printf(" %d", rc->output_channels[j]);
         printf("\n");
+    }
+
+    if (cfg->num_divisions > 0) {
+        printf("  divisions: %d\n", cfg->num_divisions);
+        for (int d = 0; d < cfg->num_divisions; d++) {
+            const DivisionConfig *dc = &cfg->divisions[d];
+            printf("    [%s] midi_channel=%d", dc->name, dc->midi_channel);
+            if (dc->expression_cc >= 0)
+                printf(" expression_cc=%d", dc->expression_cc);
+            printf("\n");
+            for (int s = 0; s < dc->num_stops; s++) {
+                const StopConfig *sc = &dc->stops[s];
+                printf("      %s → %s (cc=%d)\n", sc->name,
+                       sc->rank_index >= 0 ? cfg->ranks[sc->rank_index].name : "?",
+                       sc->engage_cc);
+            }
+        }
     }
 }

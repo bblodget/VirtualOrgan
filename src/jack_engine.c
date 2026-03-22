@@ -32,23 +32,44 @@ static int process_callback(jack_nframes_t nframes, void *arg)
     MidiEvent ev;
     while (ring_buffer_pop(engine_ctx->ring_buffer, &ev)) {
         if (ev.type == MIDI_NOTE_ON && ev.velocity > 0) {
-            for (int r = 0; r < engine_ctx->num_banks; r++) {
-                RankConfig *rc = &cfg->ranks[r];
-                /* Skip disengaged stops (if stop controls are configured) */
-                if (cfg->has_stops && !rc->engaged)
-                    continue;
-                const Sample *sample = &engine_ctx->sample_banks[r].samples[ev.note];
-                if (sample->data)
-                    voice_pool_note_on(engine_ctx->voice_pool, ev.note, ev.velocity, sample);
+            if (cfg->num_divisions > 0) {
+                /* Division-aware: find matching division by MIDI channel */
+                for (int d = 0; d < cfg->num_divisions; d++) {
+                    DivisionConfig *dc = &cfg->divisions[d];
+                    if (dc->midi_channel != ev.channel)
+                        continue;
+                    for (int s = 0; s < dc->num_stops; s++) {
+                        StopConfig *sc = &dc->stops[s];
+                        if (!sc->engaged || sc->rank_index < 0)
+                            continue;
+                        const Sample *sample = &engine_ctx->sample_banks[sc->rank_index].samples[ev.note];
+                        if (sample->data)
+                            voice_pool_note_on(engine_ctx->voice_pool, ev.note, ev.velocity, sample, d);
+                    }
+                }
+            } else {
+                /* No divisions: legacy mode, trigger all ranks */
+                for (int r = 0; r < engine_ctx->num_banks; r++) {
+                    const Sample *sample = &engine_ctx->sample_banks[r].samples[ev.note];
+                    if (sample->data)
+                        voice_pool_note_on(engine_ctx->voice_pool, ev.note, ev.velocity, sample, -1);
+                }
             }
         } else if (ev.type == MIDI_NOTE_OFF ||
                    (ev.type == MIDI_NOTE_ON && ev.velocity == 0)) {
             voice_pool_note_off(engine_ctx->voice_pool, ev.note);
         } else if (ev.type == MIDI_CC) {
-            /* Check if CC matches a rank's stop engage control */
-            for (int r = 0; r < cfg->num_ranks; r++) {
-                if (cfg->ranks[r].engage_cc >= 0 && ev.note == cfg->ranks[r].engage_cc)
-                    cfg->ranks[r].engaged = (ev.velocity >= 64);
+            /* Check stop engage CCs and expression CCs across all divisions */
+            for (int d = 0; d < cfg->num_divisions; d++) {
+                DivisionConfig *dc = &cfg->divisions[d];
+                /* Expression pedal */
+                if (dc->expression_cc >= 0 && ev.note == dc->expression_cc)
+                    dc->expression_gain = (float)ev.velocity / 127.0f;
+                /* Stop toggles */
+                for (int s = 0; s < dc->num_stops; s++) {
+                    if (ev.note == dc->stops[s].engage_cc)
+                        dc->stops[s].engaged = (ev.velocity >= 64);
+                }
             }
         }
     }
@@ -60,7 +81,7 @@ static int process_callback(jack_nframes_t nframes, void *arg)
     };
 
     /* Render all voices into output */
-    mixer_render(engine_ctx->voice_pool, bufs, 2, (int)nframes);
+    mixer_render(engine_ctx->voice_pool, bufs, 2, (int)nframes, engine_ctx->config);
 
     return 0;
 }

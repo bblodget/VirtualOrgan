@@ -32,36 +32,35 @@ static void *fake_midi_thread(void *arg)
 
     printf("midi: fake mode — engaging stops then playing C major scale\n");
 
-    /* Engage a few stops via CC before playing notes.
-     * CC value >= 64 = engaged.  Uses Bureå CC numbers:
-     * 39 = Gedackt 8', 37 = Salicional 8', 36 = Subbas 16' */
+    /* Engage stops via CC. Uses Bureå CC numbers and division channels:
+     * Manual division (ch 2): 39 = Gedackt 8', 37 = Salicional 8'
+     * Pedal division (ch 1): 36 = Subbas 16' */
     usleep(500000);  /* wait 500ms for engine to settle */
-    MidiEvent cc1 = {MIDI_CC, 1, 39, 127};  /* Gedackt 8' ON */
+    MidiEvent cc1 = {MIDI_CC, 2, 39, 127};  /* Gedackt 8' ON (manual) */
     ring_buffer_push(rb, &cc1);
-    MidiEvent cc2 = {MIDI_CC, 1, 37, 127};  /* Salicional 8' ON */
+    MidiEvent cc2 = {MIDI_CC, 2, 37, 127};  /* Salicional 8' ON (manual) */
     ring_buffer_push(rb, &cc2);
-    MidiEvent cc3 = {MIDI_CC, 1, 36, 127};  /* Subbas 16' ON */
+    MidiEvent cc3 = {MIDI_CC, 1, 36, 127};  /* Subbas 16' ON (pedal) */
     ring_buffer_push(rb, &cc3);
     usleep(200000);  /* brief pause before playing */
 
     while (running) {
         uint8_t note = scale[idx % 8];
 
-        /* Note on */
-        MidiEvent on = {MIDI_NOTE_ON, 1, note, 100};
+        /* Play on manual division (channel 2) */
+        MidiEvent on = {MIDI_NOTE_ON, 2, note, 100};
         ring_buffer_push(rb, &on);
 
         usleep(400000);  /* hold for 400ms */
 
-        /* Note off */
-        MidiEvent off = {MIDI_NOTE_OFF, 1, note, 0};
+        MidiEvent off = {MIDI_NOTE_OFF, 2, note, 0};
         ring_buffer_push(rb, &off);
 
         usleep(100000);  /* gap of 100ms */
 
-        /* After one full scale, engage Principal 2' to demonstrate adding a stop */
+        /* After one full scale, engage Principal 2' on manual */
         if (idx == 7) {
-            MidiEvent cc4 = {MIDI_CC, 1, 45, 127};  /* Principal 2' ON */
+            MidiEvent cc4 = {MIDI_CC, 2, 45, 127};  /* Principal 2' ON */
             ring_buffer_push(rb, &cc4);
         }
 

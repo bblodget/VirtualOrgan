@@ -16,10 +16,13 @@
 #define MIXER_H
 
 #include "voice.h"
+#include "config.h"
 
 /* Render all active voices into output buffers.
- * bufs is an array of num_channels output buffers, each with nframes floats. */
-void mixer_render(VoicePool *pool, float **bufs, int num_channels, int nframes);
+ * bufs is an array of num_channels output buffers, each with nframes floats.
+ * config is used to look up per-division expression gain (may be NULL). */
+void mixer_render(VoicePool *pool, float **bufs, int num_channels, int nframes,
+                  const OrganConfig *config);
 
 /* Get/set master gain (0.01 to 2.0). */
 float mixer_get_gain(void);

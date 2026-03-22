@@ -37,6 +37,7 @@ typedef struct {
     int          position;   /* current playback position in frames */
     VoicePhase   phase;
     bool         note_held;  /* true while key is down */
+    int          division;   /* division index (-1 if no divisions) */
     int          xfade_from; /* source position for release crossfade */
     int          xfade_to;   /* destination position in release tail */
     int          xfade_pos;  /* progress counter (0 to CROSSFADE_FRAMES) */
@@ -49,8 +50,10 @@ typedef struct {
 
 void voice_pool_init(VoicePool *pool);
 
-/* Activate a voice for the given note. Returns pointer to voice, or NULL if pool full. */
-Voice *voice_pool_note_on(VoicePool *pool, uint8_t note, uint8_t velocity, const Sample *sample);
+/* Activate a voice for the given note. division is the index into config divisions
+ * (-1 if no divisions configured). Returns pointer to voice, or NULL if pool full. */
+Voice *voice_pool_note_on(VoicePool *pool, uint8_t note, uint8_t velocity,
+                          const Sample *sample, int division);
 
 /* Deactivate all voices playing the given note. */
 void voice_pool_note_off(VoicePool *pool, uint8_t note);
@@ -58,7 +61,9 @@ void voice_pool_note_off(VoicePool *pool, uint8_t note);
 /* Render nframes of audio from a single voice into output buffers (additive).
  * bufs is an array of num_channels output buffers.
  * Mono samples are duplicated to all channels.
+ * expression_gain is applied as additional volume (1.0 = full, from division).
  * Returns false if voice finished and was deactivated. */
-bool voice_render(Voice *voice, float **bufs, int num_channels, int nframes);
+bool voice_render(Voice *voice, float **bufs, int num_channels, int nframes,
+                  float expression_gain);
 
 #endif

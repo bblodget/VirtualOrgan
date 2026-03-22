@@ -70,6 +70,7 @@ static volatile int running;
 static volatile int quit_requested;
 static RingBuffer *ring_buf;
 static const OrganConfig *organ_config;
+static int active_division;  /* index into organ_config->divisions[] */
 
 static void print_help(void)
 {
@@ -77,42 +78,23 @@ static void print_help(void)
     printf("  Notes:  Q W E R T Y U I O P  (white keys)\n");
     printf("          2 3   5 6 7   9 0    (black keys)\n");
     printf("  Octave: [ down  ] up\n");
-    printf("  Stops:  ");
 
-    /* Map stop keys to rank names from config */
-    const char *stop_keys[] = {"Z", "X", "C", "V", "B", "N", "M"};
-    int count = 0;
-    for (int i = 0; i < organ_config->num_ranks && count < 7; i++) {
-        if (organ_config->ranks[i].engage_cc >= 0) {
-            printf("%s=%s ", stop_keys[count], organ_config->ranks[i].name);
-            count++;
-        }
+    if (organ_config->num_divisions > 0) {
+        printf("  Tab = cycle division  (current: %s)\n",
+               organ_config->divisions[active_division].name);
+        printf("  Stops:  ");
+        const char *stop_keys[] = {"Z", "X", "C", "V", "B", "N", "M"};
+        const DivisionConfig *dc = &organ_config->divisions[active_division];
+        for (int s = 0; s < dc->num_stops && s < 7; s++)
+            printf("%s=%s ", stop_keys[s], dc->stops[s].name);
+        printf("\n");
+    } else {
+        printf("  (no divisions configured — all ranks always play)\n");
     }
-    if (count == 0)
-        printf("(no stops configured)");
-    printf("\n");
+
     printf("  -/= = gain down/up  Space = all stops off  H = this help\n");
     printf("  Esc to quit\n\n");
 }
-
-/* Build a mapping from stop index (0-6) to rank index in config.
- * Only ranks with engage_cc are included. */
-static int stop_to_rank[7];
-static int num_stop_keys;
-
-static void build_stop_map(void)
-{
-    num_stop_keys = 0;
-    for (int i = 0; i < organ_config->num_ranks && num_stop_keys < 7; i++) {
-        if (organ_config->ranks[i].engage_cc >= 0) {
-            stop_to_rank[num_stop_keys] = i;
-            num_stop_keys++;
-        }
-    }
-}
-
-/* Track which stop keys are currently toggled on */
-static bool stop_state[7];
 
 static void *keyboard_thread(void *arg)
 {
@@ -134,7 +116,6 @@ static void *keyboard_thread(void *arg)
         return NULL;
     }
 
-    build_stop_map();
     print_help();
 
     int octave = 4;  /* base octave: Q = C4 = MIDI note 60 */
@@ -159,6 +140,16 @@ static void *keyboard_thread(void *arg)
                     quit_requested = 1;
                     running = 0;
                     break;
+                }
+
+                /* Tab = cycle division */
+                if (sc == SDL_SCANCODE_TAB && organ_config->num_divisions > 0) {
+                    active_division = (active_division + 1) % organ_config->num_divisions;
+                    printf("Division: %s (ch %d)\n",
+                           organ_config->divisions[active_division].name,
+                           organ_config->divisions[active_division].midi_channel);
+                    print_help();
+                    continue;
                 }
 
                 /* Octave shift */
@@ -191,46 +182,53 @@ static void *keyboard_thread(void *arg)
                     continue;
                 }
 
-                /* Spacebar = all stops off */
-                if (sc == SDL_SCANCODE_SPACE) {
-                    for (int s = 0; s < num_stop_keys; s++) {
-                        if (stop_state[s]) {
-                            stop_state[s] = false;
-                            int rank_idx = stop_to_rank[s];
-                            const RankConfig *rc = &organ_config->ranks[rank_idx];
-                            MidiEvent cc = {MIDI_CC, 1, (uint8_t)rc->engage_cc, 0};
-                            ring_buffer_push(ring_buf, &cc);
-                        }
+                /* Get active division's MIDI channel (or 1 for legacy) */
+                int midi_ch = 1;
+                if (organ_config->num_divisions > 0)
+                    midi_ch = organ_config->divisions[active_division].midi_channel;
+
+                /* Spacebar = all stops off in active division */
+                if (sc == SDL_SCANCODE_SPACE && organ_config->num_divisions > 0) {
+                    const DivisionConfig *dc = &organ_config->divisions[active_division];
+                    for (int s = 0; s < dc->num_stops; s++) {
+                        MidiEvent cc = {MIDI_CC, (uint8_t)midi_ch,
+                                        (uint8_t)dc->stops[s].engage_cc, 0};
+                        ring_buffer_push(ring_buf, &cc);
                     }
-                    printf("All stops OFF\n");
+                    printf("All stops OFF (%s)\n", dc->name);
                     continue;
                 }
 
                 /* Note key? */
                 int semi = scancode_to_semitone(sc);
                 if (semi >= 0) {
-                    int note = (octave + 1) * 12 + semi;  /* MIDI note number */
+                    int note = (octave + 1) * 12 + semi;
                     if (note >= 0 && note < 128) {
-                        MidiEvent on = {MIDI_NOTE_ON, 1, (uint8_t)note, 100};
+                        MidiEvent on = {MIDI_NOTE_ON, (uint8_t)midi_ch,
+                                        (uint8_t)note, 100};
                         ring_buffer_push(ring_buf, &on);
-                        printf("Note ON:  %s%d (MIDI %d)\n",
-                               note_names[note % 12], note / 12 - 1, note);
+                        printf("Note ON:  %s%d (MIDI %d, ch %d)\n",
+                               note_names[note % 12], note / 12 - 1, note, midi_ch);
                     }
                     continue;
                 }
 
-                /* Stop toggle key? */
-                int stop_idx = scancode_to_stop(sc);
-                if (stop_idx >= 0 && stop_idx < num_stop_keys) {
-                    int rank_idx = stop_to_rank[stop_idx];
-                    const RankConfig *rc = &organ_config->ranks[rank_idx];
-                    stop_state[stop_idx] = !stop_state[stop_idx];
-                    uint8_t cc_val = stop_state[stop_idx] ? 127 : 0;
-                    MidiEvent cc = {MIDI_CC, 1, (uint8_t)rc->engage_cc, cc_val};
-                    ring_buffer_push(ring_buf, &cc);
-                    printf("Stop %s: %s\n", rc->name,
-                           stop_state[stop_idx] ? "ON" : "OFF");
-                    continue;
+                /* Stop toggle key? (operates on active division) */
+                if (organ_config->num_divisions > 0) {
+                    int stop_idx = scancode_to_stop(sc);
+                    const DivisionConfig *dc = &organ_config->divisions[active_division];
+                    if (stop_idx >= 0 && stop_idx < dc->num_stops) {
+                        const StopConfig *stop = &dc->stops[stop_idx];
+                        /* Toggle: send CC 127 or 0 */
+                        bool new_state = !stop->engaged;
+                        uint8_t cc_val = new_state ? 127 : 0;
+                        MidiEvent cc = {MIDI_CC, (uint8_t)midi_ch,
+                                        (uint8_t)stop->engage_cc, cc_val};
+                        ring_buffer_push(ring_buf, &cc);
+                        printf("Stop %s: %s\n", stop->name,
+                               new_state ? "ON" : "OFF");
+                        continue;
+                    }
                 }
             }
 
@@ -240,9 +238,13 @@ static void *keyboard_thread(void *arg)
                 /* Note key released? */
                 int semi = scancode_to_semitone(sc);
                 if (semi >= 0) {
+                    int midi_ch = 1;
+                    if (organ_config->num_divisions > 0)
+                        midi_ch = organ_config->divisions[active_division].midi_channel;
                     int note = (octave + 1) * 12 + semi;
                     if (note >= 0 && note < 128) {
-                        MidiEvent off = {MIDI_NOTE_OFF, 1, (uint8_t)note, 0};
+                        MidiEvent off = {MIDI_NOTE_OFF, (uint8_t)midi_ch,
+                                         (uint8_t)note, 0};
                         ring_buffer_push(ring_buf, &off);
                     }
                 }
@@ -263,9 +265,7 @@ int keyboard_start(RingBuffer *rb, const OrganConfig *config)
     organ_config = config;
     running = 1;
     quit_requested = 0;
-
-    for (int i = 0; i < 7; i++)
-        stop_state[i] = false;
+    active_division = 0;
 
     return pthread_create(&kbd_thread, NULL, keyboard_thread, NULL);
 }

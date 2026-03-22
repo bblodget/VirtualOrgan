@@ -20,7 +20,8 @@ void voice_pool_init(VoicePool *pool)
     memset(pool, 0, sizeof(*pool));
 }
 
-Voice *voice_pool_note_on(VoicePool *pool, uint8_t note, uint8_t velocity, const Sample *sample)
+Voice *voice_pool_note_on(VoicePool *pool, uint8_t note, uint8_t velocity,
+                          const Sample *sample, int division)
 {
     if (!sample || !sample->data)
         return NULL;
@@ -36,6 +37,7 @@ Voice *voice_pool_note_on(VoicePool *pool, uint8_t note, uint8_t velocity, const
             v->position  = 0;
             v->phase     = VOICE_ATTACK;
             v->note_held = true;
+            v->division  = division;
             pool->active_count++;
             return v;
         }
@@ -131,10 +133,11 @@ static inline void begin_release(Voice *voice, const Sample *s)
     }
 }
 
-bool voice_render(Voice *voice, float **bufs, int num_channels, int nframes)
+bool voice_render(Voice *voice, float **bufs, int num_channels, int nframes,
+                  float expression_gain)
 {
     const Sample *s = voice->sample;
-    float gain = (float)voice->velocity / 127.0f;
+    float gain = (float)voice->velocity / 127.0f * expression_gain;
 
     for (int i = 0; i < nframes; i++) {
         /* Bounds check */

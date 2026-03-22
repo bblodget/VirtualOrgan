@@ -28,7 +28,8 @@ static inline float soft_clip(float x)
     return x;
 }
 
-void mixer_render(VoicePool *pool, float **bufs, int num_channels, int nframes)
+void mixer_render(VoicePool *pool, float **bufs, int num_channels, int nframes,
+                  const OrganConfig *config)
 {
     /* Clear output buffers */
     for (int ch = 0; ch < num_channels; ch++)
@@ -40,7 +41,12 @@ void mixer_render(VoicePool *pool, float **bufs, int num_channels, int nframes)
         if (!v->active)
             continue;
 
-        bool still_active = voice_render(v, bufs, num_channels, nframes);
+        /* Look up per-division expression gain */
+        float expr_gain = 1.0f;
+        if (config && v->division >= 0 && v->division < config->num_divisions)
+            expr_gain = config->divisions[v->division].expression_gain;
+
+        bool still_active = voice_render(v, bufs, num_channels, nframes, expr_gain);
 
         if (!still_active)
             pool->active_count--;

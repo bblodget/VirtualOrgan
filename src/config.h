@@ -21,25 +21,41 @@
 #define MAX_RANKS          64
 #define MAX_OUTPUT_CHANNELS 32
 #define MAX_PATH_LEN       256
+#define MAX_DIVISIONS      8
+#define MAX_STOPS_PER_DIV  32
 
 typedef struct {
     char     sample_dir[MAX_PATH_LEN];
     char     filename_pattern[MAX_PATH_LEN];  /* e.g. "{note:03d}.wav" or "{note:03d}-{name}.wav" */
-    int      midi_channel;
     int      output_channels[MAX_OUTPUT_CHANNELS];
     int      num_output_channels;
     char     name[64];
-    int      engage_cc;     /* MIDI CC to toggle this rank as a stop (-1 = none) */
-    bool     engaged;       /* runtime state: is this stop on? */
 } RankConfig;
 
 typedef struct {
-    int         sample_rate;
-    int         buffer_size;
-    char        jack_client_name[64];
-    RankConfig  ranks[MAX_RANKS];
-    int         num_ranks;
-    bool        has_stops;  /* true if any rank has engage_cc set */
+    char     name[64];
+    int      rank_index;    /* index into config.ranks[] */
+    int      engage_cc;     /* MIDI CC to toggle this stop */
+    bool     engaged;       /* runtime state, starts false */
+} StopConfig;
+
+typedef struct {
+    char        name[64];
+    int         midi_channel;              /* MIDI channel for this division */
+    int         expression_cc;             /* CC for expression pedal (-1 = none) */
+    float       expression_gain;           /* runtime: 0.0–1.0, default 1.0 */
+    StopConfig  stops[MAX_STOPS_PER_DIV];
+    int         num_stops;
+} DivisionConfig;
+
+typedef struct {
+    int             sample_rate;
+    int             buffer_size;
+    char            jack_client_name[64];
+    RankConfig      ranks[MAX_RANKS];
+    int             num_ranks;
+    DivisionConfig  divisions[MAX_DIVISIONS];
+    int             num_divisions;
 } OrganConfig;
 
 /* Load config from TOML file. Returns 0 on success, -1 on error. */
