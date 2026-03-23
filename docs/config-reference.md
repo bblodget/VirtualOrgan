@@ -14,12 +14,12 @@ jack_client_name = "organ" # JACK client name
 num_outputs = 2            # number of JACK output ports (default 2)
 ```
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `sample_rate` | int | 48000 | Expected sample rate. JACK determines the actual rate. |
-| `buffer_size` | int | 128 | Expected buffer size. JACK determines the actual size. |
-| `jack_client_name` | string | "organ" | Name used when connecting to the JACK server. |
-| `num_outputs` | int | 2 | Number of JACK output ports to register. Set to 8 for 7.1 surround via HDMI. |
+| Field              | Type   | Default | Description                                                                |
+|--------------------|--------|---------|----------------------------------------------------------------------------|
+| `sample_rate`      | int    | 48000   | Expected sample rate. JACK determines the actual rate.                     |
+| `buffer_size`      | int    | 128     | Expected buffer size. JACK determines the actual size.                     |
+| `jack_client_name` | string | "organ" | Name used when connecting to the JACK server.                              |
+| `num_outputs`      | int    | 2       | Number of JACK output ports to register. Set to 8 for 7.1 surround via HDMI. |
 
 ---
 
@@ -34,21 +34,21 @@ filename_pattern = "{note:03d}-{name}.wav"
 num_perspectives = 1
 ```
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `sample_dir` | string | (required) | Directory containing WAV files for this rank. |
-| `filename_pattern` | string | `{note:03d}.wav` | Pattern for WAV filenames. See placeholders below. |
-| `num_perspectives` | int | 1 | Number of mic perspectives in the sample data. Used with routing to determine channels per perspective: `sample_channels / num_perspectives`. |
+| Field              | Type   | Default          | Description                                                                                                                                    |
+|--------------------|--------|------------------|------------------------------------------------------------------------------------------------------------------------------------------------|
+| `sample_dir`       | string | (required)       | Directory containing WAV files for this rank.                                                                                                  |
+| `filename_pattern` | string | `{note:03d}.wav` | Pattern for WAV filenames. See placeholders below.                                                                                             |
+| `num_perspectives` | int    | 1                | Number of mic perspectives in the sample data. Used with routing to determine channels per perspective: `sample_channels / num_perspectives`. |
 
 ### Filename Pattern Placeholders
 
-| Placeholder | Expands To | Example (middle C, MIDI 60) |
-|-------------|-----------|----------------------------|
-| `{note:03d}` | Zero-padded 3-digit MIDI note | `060` |
-| `{note:02d}` | Zero-padded 2-digit MIDI note | `60` |
-| `{note}` | Unpadded MIDI note number | `60` |
-| `{name}` | Note name with # for sharps | `C` |
-| `{octave}` | Octave number | `4` |
+| Placeholder  | Expands To                    | Example (middle C, MIDI 60) |
+|--------------|-------------------------------|-----------------------------|
+| `{note:03d}` | Zero-padded 3-digit MIDI note | `060`                       |
+| `{note:02d}` | Zero-padded 2-digit MIDI note | `60`                        |
+| `{note}`     | Unpadded MIDI note number     | `60`                        |
+| `{name}`     | Note name with # for sharps   | `C`                         |
+| `{octave}`   | Octave number                 | `4`                         |
 
 ---
 
@@ -68,10 +68,10 @@ perspective = 2
 output_channels = [3, 4]
 ```
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `perspective` | int | 1 | Which perspective to route (1-indexed). Maps to sample channels based on `num_perspectives`. |
-| `output_channels` | int array | (required) | Output JACK port numbers (1-indexed). |
+| Field              | Type      | Default    | Description                                                                               |
+|--------------------|-----------|------------|-------------------------------------------------------------------------------------------|
+| `perspective`      | int       | 1          | Which perspective to route (1-indexed). Maps to sample channels based on `num_perspectives`. |
+| `output_channels`  | int array | (required) | Output JACK port numbers (1-indexed).                                                     |
 
 If no `[routing]` section is present, all audio defaults to stereo output on channels 1-2.
 
@@ -112,10 +112,10 @@ midi_channel = 2
 expression_cc = 11
 ```
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `midi_channel` | int | (required) | MIDI channel for this division (1-16). Notes on this channel trigger this division's engaged stops. |
-| `expression_cc` | int | (none) | MIDI CC number for the expression/swell pedal. Controls per-division volume (CC value 0-127 maps to gain 0.0-1.0). |
+| Field           | Type | Default    | Description                                                                                                        |
+|-----------------|------|------------|--------------------------------------------------------------------------------------------------------------------|
+| `midi_channel`  | int  | (required) | MIDI channel for this division (1-16). Notes on this channel trigger this division's engaged stops.                |
+| `expression_cc` | int  | (none)     | MIDI CC number for the expression/swell pedal. Controls per-division volume (CC value 0-127 maps to gain 0.0-1.0). |
 
 If no `[divisions]` section is present, all ranks are triggered by any MIDI channel (legacy mode).
 
@@ -130,10 +130,10 @@ salicional8 = { rank = "salicional8", engage_cc = 37 }
 combo = { rank = ["gedackt8", "salicional8"], engage_cc = 48 }
 ```
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `rank` | string or string array | Rank name(s) this stop controls. Use a string for a single rank, or an array for a multi-rank stop (e.g. Mixture). |
-| `engage_cc` | int | MIDI CC number to toggle this stop. CC value >= 64 = engaged, < 64 = disengaged. |
+| Field       | Type                  | Description                                                                                                        |
+|-------------|-----------------------|--------------------------------------------------------------------------------------------------------------------|
+| `rank`      | string or string array | Rank name(s) this stop controls. Use a string for a single rank, or an array for a multi-rank stop (e.g. Mixture). |
+| `engage_cc` | int                   | MIDI CC number to toggle this stop. CC value >= 64 = engaged, < 64 = disengaged.                                  |
 
 All stops start disengaged. They are toggled via MIDI CC events (from a MIDI controller, the web interface, or keyboard mode).
 
@@ -150,11 +150,11 @@ to = "manual"
 engage_cc = 49
 ```
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `from` | string | Source division name. When keys are played on this division... |
-| `to` | string | Destination division name. ...this division's engaged stops are also triggered. |
-| `engage_cc` | int | MIDI CC number to toggle this coupler on/off. |
+| Field       | Type   | Description                                                                     |
+|-------------|--------|---------------------------------------------------------------------------------|
+| `from`      | string | Source division name. When keys are played on this division...                  |
+| `to`        | string | Destination division name. ...this division's engaged stops are also triggered. |
+| `engage_cc` | int    | MIDI CC number to toggle this coupler on/off.                                   |
 
 Naming convention: `from_to_to` (e.g. `pedal_to_manual`).
 
