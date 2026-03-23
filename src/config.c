@@ -180,6 +180,9 @@ int config_load(OrganConfig *cfg, const char *path)
                     val = toml_int_in(stop, "engage_cc");
                     if (val.ok) sc->engage_cc = (int)val.u.i;
 
+                    val = toml_bool_in(stop, "engaged");
+                    if (val.ok) sc->engaged = val.u.b;
+
                     dc->num_stops++;
                 }
             }
