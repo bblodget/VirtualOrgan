@@ -21,7 +21,8 @@ void voice_pool_init(VoicePool *pool)
 }
 
 Voice *voice_pool_note_on(VoicePool *pool, uint8_t note, uint8_t velocity,
-                          const Sample *sample, int division)
+                          const Sample *sample, int division,
+                          const int *out_channels, int num_out, int src_channel_offset)
 {
     if (!sample || !sample->data)
         return NULL;
@@ -38,6 +39,10 @@ Voice *voice_pool_note_on(VoicePool *pool, uint8_t note, uint8_t velocity,
             v->phase     = VOICE_ATTACK;
             v->note_held = true;
             v->division  = division;
+            v->num_out_channels = num_out;
+            v->src_channel_offset = src_channel_offset;
+            for (int c = 0; c < num_out && c < MAX_OUTPUT_CHANNELS; c++)
+                v->out_channels[c] = out_channels[c];
             pool->active_count++;
             return v;
         }
@@ -55,39 +60,43 @@ void voice_pool_note_off(VoicePool *pool, uint8_t note)
     }
 }
 
-/* Write one frame from sample to all output channels with gain.
- * Mono samples are duplicated to all output channels. */
-static inline void output_frame(const Sample *s, int pos, float gain,
-                                float **bufs, int num_channels, int buf_idx)
+/* Write one frame to the voice's routed output channels.
+ * Maps sample channels (from src_channel_offset) to output buffers. */
+static inline void output_frame(const Voice *v, int pos, float gain,
+                                float **bufs, int buf_idx)
 {
-    int src_channels = s->channels;
-    for (int ch = 0; ch < num_channels; ch++) {
-        int src_ch = (ch < src_channels) ? ch : 0;  /* mono → duplicate ch0 */
-        bufs[ch][buf_idx] += s->data[src_ch][pos] * gain;
+    const Sample *s = v->sample;
+    /* Iterate output channels and map to sample channels from this perspective */
+    for (int i = 0; i < v->num_out_channels; i++) {
+        int out_ch = v->out_channels[i];
+        int src_ch = v->src_channel_offset + i;
+        if (src_ch >= s->channels) src_ch = v->src_channel_offset; /* duplicate first */
+        bufs[out_ch][buf_idx] += s->data[src_ch][pos] * gain;
     }
 }
 
-/* Write one crossfaded frame to all output channels. */
-static inline void output_crossfade_frame(const Sample *s, int pos, int wrap_pos,
+/* Write one crossfaded frame to the voice's routed output channels. */
+static inline void output_crossfade_frame(const Voice *v, int pos, int wrap_pos,
                                           float fade_out, float fade_in, float gain,
-                                          float **bufs, int num_channels, int buf_idx)
+                                          float **bufs, int buf_idx)
 {
-    int src_channels = s->channels;
-    for (int ch = 0; ch < num_channels; ch++) {
-        int src_ch = (ch < src_channels) ? ch : 0;
+    const Sample *s = v->sample;
+    for (int i = 0; i < v->num_out_channels; i++) {
+        int out_ch = v->out_channels[i];
+        int src_ch = v->src_channel_offset + i;
+        if (src_ch >= s->channels) src_ch = v->src_channel_offset;
         float val = s->data[src_ch][pos] * fade_out
                   + s->data[src_ch][wrap_pos] * fade_in;
-        bufs[ch][buf_idx] += val * gain;
+        bufs[out_ch][buf_idx] += val * gain;
     }
 }
 
 /* Render one sustain frame. Loop points are chosen at zero-crossings
  * by the sample set creator, so no crossfade is needed at the boundary. */
 static inline void render_sustain(Voice *voice, const Sample *s,
-                                  float gain, float **bufs,
-                                  int num_channels, int buf_idx)
+                                  float gain, float **bufs, int buf_idx)
 {
-    output_frame(s, voice->position, gain, bufs, num_channels, buf_idx);
+    output_frame(voice, voice->position, gain, bufs, buf_idx);
     voice->position++;
     if (voice->position >= s->loop_end)
         voice->position = s->loop_start;
@@ -136,6 +145,7 @@ static inline void begin_release(Voice *voice, const Sample *s)
 bool voice_render(Voice *voice, float **bufs, int num_channels, int nframes,
                   float expression_gain)
 {
+    (void)num_channels;  /* routing is per-voice now */
     const Sample *s = voice->sample;
     float gain = (float)voice->velocity / 127.0f * expression_gain;
 
@@ -148,7 +158,7 @@ bool voice_render(Voice *voice, float **bufs, int num_channels, int nframes,
 
         switch (voice->phase) {
         case VOICE_ATTACK:
-            output_frame(s, voice->position, gain, bufs, num_channels, i);
+            output_frame(voice, voice->position, gain, bufs, i);
             voice->position++;
 
             if (!voice->note_held) {
@@ -166,7 +176,7 @@ bool voice_render(Voice *voice, float **bufs, int num_channels, int nframes,
                 break;
             }
 
-            render_sustain(voice, s, gain, bufs, num_channels, i);
+            render_sustain(voice, s, gain, bufs, i);
             break;
 
         case VOICE_RELEASE_XFADE: {
@@ -180,9 +190,8 @@ bool voice_render(Voice *voice, float **bufs, int num_channels, int nframes,
             float fade_out = 1.0f - (float)voice->xfade_pos / CROSSFADE_FRAMES;
             float fade_in  = (float)voice->xfade_pos / CROSSFADE_FRAMES;
 
-            output_crossfade_frame(s, from_pos, to_pos,
-                                   fade_out, fade_in, gain,
-                                   bufs, num_channels, i);
+            output_crossfade_frame(voice, from_pos, to_pos,
+                                   fade_out, fade_in, gain, bufs, i);
             voice->xfade_pos++;
 
             if (voice->xfade_pos >= CROSSFADE_FRAMES) {
@@ -199,7 +208,7 @@ bool voice_render(Voice *voice, float **bufs, int num_channels, int nframes,
                 return false;
             }
 
-            output_frame(s, voice->position, gain, bufs, num_channels, i);
+            output_frame(voice, voice->position, gain, bufs, i);
             voice->position++;
             break;
         }

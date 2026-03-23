@@ -25,6 +25,7 @@ int config_load(OrganConfig *cfg, const char *path)
     /* Defaults */
     cfg->sample_rate = 48000;
     cfg->buffer_size = 128;
+    cfg->num_outputs = 2;
     strncpy(cfg->jack_client_name, "organ", sizeof(cfg->jack_client_name) - 1);
 
     FILE *fp = fopen(path, "r");
@@ -52,6 +53,9 @@ int config_load(OrganConfig *cfg, const char *path)
 
         val = toml_int_in(audio, "buffer_size");
         if (val.ok) cfg->buffer_size = (int)val.u.i;
+
+        val = toml_int_in(audio, "num_outputs");
+        if (val.ok) cfg->num_outputs = (int)val.u.i;
 
         val = toml_string_in(audio, "jack_client_name");
         if (val.ok) {
@@ -88,16 +92,9 @@ int config_load(OrganConfig *cfg, const char *path)
                 strncpy(rc->filename_pattern, "{note:03d}.wav", sizeof(rc->filename_pattern) - 1);
             }
 
-            toml_array_t *channels = toml_array_in(rank, "output_channels");
-            if (channels) {
-                int nc = toml_array_nelem(channels);
-                for (int j = 0; j < nc && j < MAX_OUTPUT_CHANNELS; j++) {
-                    toml_datum_t ch = toml_int_at(channels, j);
-                    if (ch.ok) {
-                        rc->output_channels[rc->num_output_channels++] = (int)ch.u.i;
-                    }
-                }
-            }
+            rc->num_perspectives = 1;  /* default */
+            val = toml_int_in(rank, "num_perspectives");
+            if (val.ok) rc->num_perspectives = (int)val.u.i;
 
             cfg->num_ranks++;
         }
@@ -243,6 +240,37 @@ int config_load(OrganConfig *cfg, const char *path)
         }
     }
 
+    /* [routing.*] sections (optional) */
+    toml_table_t *routing = toml_table_in(root, "routing");
+    if (routing) {
+        int nr = toml_table_ntab(routing);
+        for (int r = 0; r < nr && cfg->num_routes < MAX_ROUTES; r++) {
+            const char *route_key = toml_key_in(routing, r);
+            toml_table_t *route = toml_table_in(routing, route_key);
+            if (!route) continue;
+
+            RoutingConfig *rc = &cfg->routes[cfg->num_routes];
+            strncpy(rc->name, route_key, sizeof(rc->name) - 1);
+            rc->perspective = 1;  /* default */
+
+            toml_datum_t val;
+            val = toml_int_in(route, "perspective");
+            if (val.ok) rc->perspective = (int)val.u.i;
+
+            toml_array_t *channels = toml_array_in(route, "output_channels");
+            if (channels) {
+                int nc = toml_array_nelem(channels);
+                for (int j = 0; j < nc && j < MAX_OUTPUT_CHANNELS; j++) {
+                    toml_datum_t ch = toml_int_at(channels, j);
+                    if (ch.ok)
+                        rc->output_channels[rc->num_output_channels++] = (int)ch.u.i;
+                }
+            }
+
+            cfg->num_routes++;
+        }
+    }
+
     toml_free(root);
     return 0;
 }
@@ -253,6 +281,7 @@ void config_print(const OrganConfig *cfg)
     printf("  sample_rate: %d\n", cfg->sample_rate);
     printf("  buffer_size: %d\n", cfg->buffer_size);
     printf("  jack_client: %s\n", cfg->jack_client_name);
+    printf("  num_outputs: %d\n", cfg->num_outputs);
     printf("  ranks: %d\n", cfg->num_ranks);
 
     for (int i = 0; i < cfg->num_ranks; i++) {
@@ -260,10 +289,8 @@ void config_print(const OrganConfig *cfg)
         printf("    [%s]\n", rc->name);
         printf("      sample_dir: %s\n", rc->sample_dir);
         printf("      filename_pattern: %s\n", rc->filename_pattern);
-        printf("      output_channels:");
-        for (int j = 0; j < rc->num_output_channels; j++)
-            printf(" %d", rc->output_channels[j]);
-        printf("\n");
+        if (rc->num_perspectives > 1)
+            printf("      num_perspectives: %d\n", rc->num_perspectives);
     }
 
     if (cfg->num_divisions > 0) {
@@ -294,6 +321,17 @@ void config_print(const OrganConfig *cfg)
                    cc->from_division >= 0 ? cfg->divisions[cc->from_division].name : "?",
                    cc->to_division >= 0 ? cfg->divisions[cc->to_division].name : "?",
                    cc->engage_cc);
+        }
+    }
+
+    if (cfg->num_routes > 0) {
+        printf("  routing: %d\n", cfg->num_routes);
+        for (int r = 0; r < cfg->num_routes; r++) {
+            const RoutingConfig *rc = &cfg->routes[r];
+            printf("    [%s] perspective=%d → outputs", rc->name, rc->perspective);
+            for (int j = 0; j < rc->num_output_channels; j++)
+                printf(" %d", rc->output_channels[j]);
+            printf("\n");
         }
     }
 }

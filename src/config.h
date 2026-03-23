@@ -28,10 +28,18 @@
 typedef struct {
     char     sample_dir[MAX_PATH_LEN];
     char     filename_pattern[MAX_PATH_LEN];  /* e.g. "{note:03d}.wav" or "{note:03d}-{name}.wav" */
-    int      output_channels[MAX_OUTPUT_CHANNELS];
-    int      num_output_channels;
     char     name[64];
+    int      num_perspectives;  /* default 1; channels_per_perspective = sample_channels / num_perspectives */
 } RankConfig;
+
+#define MAX_ROUTES 32
+
+typedef struct {
+    char    name[64];
+    int     perspective;            /* 1-indexed perspective number */
+    int     output_channels[MAX_OUTPUT_CHANNELS];
+    int     num_output_channels;
+} RoutingConfig;
 
 #define MAX_RANKS_PER_STOP 8
 
@@ -63,6 +71,7 @@ typedef struct {
 typedef struct {
     int             sample_rate;
     int             buffer_size;
+    int             num_outputs;    /* JACK output ports (default 2) */
     char            jack_client_name[64];
     RankConfig      ranks[MAX_RANKS];
     int             num_ranks;
@@ -70,6 +79,8 @@ typedef struct {
     int             num_divisions;
     CouplerConfig   couplers[MAX_COUPLERS];
     int             num_couplers;
+    RoutingConfig   routes[MAX_ROUTES];
+    int             num_routes;
 } OrganConfig;
 
 /* Load config from TOML file. Returns 0 on success, -1 on error. */

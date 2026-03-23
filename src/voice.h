@@ -18,6 +18,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include "sampler.h"
+#include "config.h"
 
 #define MAX_VOICES 128
 #define CROSSFADE_FRAMES 64  /* ~1.5ms at 44.1kHz */
@@ -38,6 +39,9 @@ typedef struct {
     VoicePhase   phase;
     bool         note_held;  /* true while key is down */
     int          division;   /* division index (-1 if no divisions) */
+    int          out_channels[MAX_OUTPUT_CHANNELS]; /* 0-indexed output buffer indices */
+    int          num_out_channels;                  /* how many outputs this voice writes to */
+    int          src_channel_offset;                /* first sample channel for this perspective */
     int          xfade_from; /* source position for release crossfade */
     int          xfade_to;   /* destination position in release tail */
     int          xfade_pos;  /* progress counter (0 to CROSSFADE_FRAMES) */
@@ -50,10 +54,14 @@ typedef struct {
 
 void voice_pool_init(VoicePool *pool);
 
-/* Activate a voice for the given note. division is the index into config divisions
- * (-1 if no divisions configured). Returns pointer to voice, or NULL if pool full. */
+/* Activate a voice for the given note.
+ * out_channels/num_out are 0-indexed output buffer indices for this voice.
+ * src_channel_offset is the first sample channel for this perspective.
+ * division is the index into config divisions (-1 if none).
+ * Returns pointer to voice, or NULL if pool full. */
 Voice *voice_pool_note_on(VoicePool *pool, uint8_t note, uint8_t velocity,
-                          const Sample *sample, int division);
+                          const Sample *sample, int division,
+                          const int *out_channels, int num_out, int src_channel_offset);
 
 /* Deactivate all voices playing the given note. */
 void voice_pool_note_off(VoicePool *pool, uint8_t note);
