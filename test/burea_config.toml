@@ -34,26 +34,26 @@ sample_dir = "samples/Burea_Funeral_Chapel/Subbas16"
 filename_pattern = "{note:03d}-{name}.wav"
 
 # Routing — perspective to output speakers
-# [routing.default]
-# source = { perspective = 1 }
-# output_channels = [1, 2]
-
-[routing.manual]
-source = { division = "manual" }
+[routing.default]
+source = { perspective = 1 }
 output_channels = [1]
 
-[routing.pedal]
-source = { division = "pedal" }
-output_channels = [2]
+# [routing.manual]
+# source = { division = "manual" }
+# output_channels = [1]
+#
+# [routing.pedal]
+# source = { division = "pedal" }
+# output_channels = [2]
 
 
 # Divisions — CC numbers from Bureå ODF
 [divisions.manual]
-midi_channel = 2
+midi_channel = 1
 expression_cc = 11
 
 [divisions.manual.stops]
-gedackt8 = { rank = "gedackt8", engage_cc = 39 }
+gedackt8 = { rank = "gedackt8", engage_cc = 39, engaged = true }
 salicional8 = { rank = "salicional8", engage_cc = 37 }
 voixceleste8 = { rank = "voixceleste8", engage_cc = 41 }
 rorflojt4 = { rank = "rorflojt4", engage_cc = 43 }
@@ -61,7 +61,7 @@ principal2 = { rank = "principal2", engage_cc = 45 }
 combo = { rank = ["gedackt8", "salicional8"], engage_cc = 48 }
 
 [divisions.pedal]
-midi_channel = 1
+midi_channel = 2
 expression_cc = 12
 
 [divisions.pedal.stops]
