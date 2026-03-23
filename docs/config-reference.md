@@ -65,29 +65,62 @@ num_perspectives = 1
 
 ## `[routing.*]` — Output Channel Routing
 
-Routes audio perspectives to physical output speakers. Each
-routing entry maps a perspective (mic position) to one or
-more output channels.
+Routes audio sources to physical output speakers. Each
+routing entry maps a source to one or more output channels.
+
+The `source` field determines what is being routed. It is
+an inline table with exactly one key identifying the type:
+
+| Source Key    | Value  | Routes...                  |
+|---------------|--------|----------------------------|
+| `perspective` | int    | A mic perspective (1+).    |
+| `division`    | string | All stops in a division.   |
+| `rank`        | string | A specific rank by name.   |
+
+### Source Precedence
+
+More specific routes override more general ones:
+
+1. `rank` — most specific, overrides division/perspective
+2. `division` — overrides perspective
+3. `perspective` — default for all ranks
+
+### Examples
 
 ```toml
-# Single perspective to stereo speakers
-[routing.default]
-perspective = 1
+# Perspective routing — default for all ranks
+[routing.close]
+source = { perspective = 1 }
 output_channels = [1, 2]
 
 # Second perspective to rear speakers
 [routing.rear]
-perspective = 2
+source = { perspective = 2 }
+output_channels = [3, 4]
+
+# Division routing — all manual stops to front
+[routing.manual_front]
+source = { division = "manual" }
+output_channels = [1, 2]
+
+# Division routing — pedal to subwoofer
+[routing.pedal_sub]
+source = { division = "pedal" }
+output_channels = [3, 4]
+
+# Rank routing — override for a specific rank
+[routing.subbas_sub]
+source = { rank = "subbas16" }
 output_channels = [3, 4]
 ```
 
-| Field             | Type      | Default    | Description              |
-|-------------------|-----------|------------|--------------------------|
-| `perspective`     | int       | 1          | Perspective index (1+).  |
-| `output_channels` | int array | (required) | JACK port numbers (1+).  |
+### Fields
 
-- `perspective` maps to sample channels based on
-  `num_perspectives` in the rank config.
+| Field             | Type         | Description              |
+|-------------------|--------------|--------------------------|
+| `source`          | inline table | What to route (see above). |
+| `output_channels` | int array    | JACK port numbers (1+).  |
+
 - If no `[routing]` section is present, all audio defaults
   to stereo output on channels 1-2.
 
@@ -97,6 +130,9 @@ A perspective represents a microphone position used when
 recording the organ. Most sample sets have one perspective
 (one stereo pair). Professional sets may have multiple
 perspectives (close, rear, ambient).
+
+`perspective` maps to sample channels based on
+`num_perspectives` in the rank config.
 
 Multiple perspectives can come from:
 
@@ -108,17 +144,12 @@ Multiple perspectives can come from:
 
 ### Future Routing Features
 
-Per-rank and per-note-range routing overrides are planned:
+Per-note-range routing is planned:
 
 ```toml
-# Per-rank override (future)
-[routing.subbas_sub]
-rank = "subbas16"
-output_channels = [3, 4]
-
-# Per-note-range override (future)
+# Route low pedal notes to subwoofer (future)
 [routing.pedal_bass]
-rank = "subbas16"
+source = { rank = "subbas16" }
 note_range = [36, 48]
 output_channels = [5, 6]
 ```
@@ -215,7 +246,7 @@ sample_dir = "samples/Burea_Funeral_Chapel/Subbas16"
 filename_pattern = "{note:03d}-{name}.wav"
 
 [routing.default]
-perspective = 1
+source = { perspective = 1 }
 output_channels = [1, 2]
 
 [divisions.manual]
