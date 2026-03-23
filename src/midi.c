@@ -117,6 +117,8 @@ static void *alsa_midi_thread(void *arg)
                 me.channel  = ev->data.note.channel + 1;
                 me.note     = ev->data.note.note;
                 me.velocity = ev->data.note.velocity;
+                fprintf(stderr, "midi: NOTE_ON ch=%d note=%d vel=%d\n",
+                        me.channel, me.note, me.velocity);
                 ring_buffer_push(rb, &me);
                 break;
 
