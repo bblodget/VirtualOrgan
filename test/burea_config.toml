@@ -50,6 +50,7 @@ salicional8 = { rank = "salicional8", engage_cc = 37 }
 voixceleste8 = { rank = "voixceleste8", engage_cc = 41 }
 rorflojt4 = { rank = "rorflojt4", engage_cc = 43 }
 principal2 = { rank = "principal2", engage_cc = 45 }
+combo = { rank = ["gedackt8", "salicional8"], engage_cc = 48 }
 
 [divisions.pedal]
 midi_channel = 1

@@ -42,11 +42,13 @@ static int process_callback(jack_nframes_t nframes, void *arg)
                     /* Trigger this division's engaged stops */
                     for (int s = 0; s < dc->num_stops; s++) {
                         StopConfig *sc = &dc->stops[s];
-                        if (!sc->engaged || sc->rank_index < 0)
+                        if (!sc->engaged || sc->num_ranks == 0)
                             continue;
-                        const Sample *sample = &engine_ctx->sample_banks[sc->rank_index].samples[ev.note];
-                        if (sample->data)
-                            voice_pool_note_on(engine_ctx->voice_pool, ev.note, ev.velocity, sample, d);
+                        for (int ri = 0; ri < sc->num_ranks; ri++) {
+                            const Sample *sample = &engine_ctx->sample_banks[sc->rank_indices[ri]].samples[ev.note];
+                            if (sample->data)
+                                voice_pool_note_on(engine_ctx->voice_pool, ev.note, ev.velocity, sample, d);
+                        }
                     }
 
                     /* Check couplers: if any couple FROM this division, also trigger the TO division */
@@ -60,11 +62,13 @@ static int process_callback(jack_nframes_t nframes, void *arg)
                         DivisionConfig *to_dc = &cfg->divisions[td];
                         for (int s = 0; s < to_dc->num_stops; s++) {
                             StopConfig *sc = &to_dc->stops[s];
-                            if (!sc->engaged || sc->rank_index < 0)
+                            if (!sc->engaged || sc->num_ranks == 0)
                                 continue;
-                            const Sample *sample = &engine_ctx->sample_banks[sc->rank_index].samples[ev.note];
-                            if (sample->data)
-                                voice_pool_note_on(engine_ctx->voice_pool, ev.note, ev.velocity, sample, td);
+                            for (int ri = 0; ri < sc->num_ranks; ri++) {
+                                const Sample *sample = &engine_ctx->sample_banks[sc->rank_indices[ri]].samples[ev.note];
+                                if (sample->data)
+                                    voice_pool_note_on(engine_ctx->voice_pool, ev.note, ev.velocity, sample, td);
+                            }
                         }
                     }
                 }

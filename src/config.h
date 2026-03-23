@@ -33,9 +33,12 @@ typedef struct {
     char     name[64];
 } RankConfig;
 
+#define MAX_RANKS_PER_STOP 8
+
 typedef struct {
     char     name[64];
-    int      rank_index;    /* index into config.ranks[] */
+    int      rank_indices[MAX_RANKS_PER_STOP]; /* indices into config.ranks[] */
+    int      num_ranks;                        /* 1 for normal stops, >1 for multi-rank */
     int      engage_cc;     /* MIDI CC to toggle this stop */
     bool     engaged;       /* runtime state, starts false */
 } StopConfig;

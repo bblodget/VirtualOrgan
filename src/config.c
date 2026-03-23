@@ -136,20 +136,48 @@ int config_load(OrganConfig *cfg, const char *path)
                     StopConfig *sc = &dc->stops[dc->num_stops];
                     strncpy(sc->name, stop_key, sizeof(sc->name) - 1);
                     sc->engaged = false;
-                    sc->rank_index = -1;
+                    sc->num_ranks = 0;
 
+                    /* rank can be a string or array of strings */
                     val = toml_string_in(stop, "rank");
                     if (val.ok) {
+                        /* Single rank: rank = "name" */
+                        int idx = -1;
                         for (int r = 0; r < cfg->num_ranks; r++) {
                             if (strcmp(cfg->ranks[r].name, val.u.s) == 0) {
-                                sc->rank_index = r;
+                                idx = r;
                                 break;
                             }
                         }
-                        if (sc->rank_index < 0)
+                        if (idx >= 0)
+                            sc->rank_indices[sc->num_ranks++] = idx;
+                        else
                             fprintf(stderr, "config: stop '%s' references unknown rank '%s'\n",
                                     stop_key, val.u.s);
                         free(val.u.s);
+                    } else {
+                        /* Multi-rank: rank = ["name1", "name2"] */
+                        toml_array_t *rank_arr = toml_array_in(stop, "rank");
+                        if (rank_arr) {
+                            int nr = toml_array_nelem(rank_arr);
+                            for (int ri = 0; ri < nr && sc->num_ranks < MAX_RANKS_PER_STOP; ri++) {
+                                toml_datum_t rv = toml_string_at(rank_arr, ri);
+                                if (!rv.ok) continue;
+                                int idx = -1;
+                                for (int r = 0; r < cfg->num_ranks; r++) {
+                                    if (strcmp(cfg->ranks[r].name, rv.u.s) == 0) {
+                                        idx = r;
+                                        break;
+                                    }
+                                }
+                                if (idx >= 0)
+                                    sc->rank_indices[sc->num_ranks++] = idx;
+                                else
+                                    fprintf(stderr, "config: stop '%s' references unknown rank '%s'\n",
+                                            stop_key, rv.u.s);
+                                free(rv.u.s);
+                            }
+                        }
                     }
 
                     val = toml_int_in(stop, "engage_cc");
@@ -248,9 +276,12 @@ void config_print(const OrganConfig *cfg)
             printf("\n");
             for (int s = 0; s < dc->num_stops; s++) {
                 const StopConfig *sc = &dc->stops[s];
-                printf("      %s → %s (cc=%d)\n", sc->name,
-                       sc->rank_index >= 0 ? cfg->ranks[sc->rank_index].name : "?",
-                       sc->engage_cc);
+                printf("      %s → ", sc->name);
+                for (int ri = 0; ri < sc->num_ranks; ri++) {
+                    if (ri > 0) printf("+");
+                    printf("%s", cfg->ranks[sc->rank_indices[ri]].name);
+                }
+                printf(" (cc=%d)\n", sc->engage_cc);
             }
         }
     }
