@@ -68,6 +68,6 @@ float mixer_get_gain(void)
 void mixer_set_gain(float gain)
 {
     if (gain < 0.01f) gain = 0.01f;
-    if (gain > 2.0f) gain = 2.0f;
+    if (gain > 10.0f) gain = 10.0f;
     master_gain = gain;
 }

@@ -34,11 +34,20 @@ typedef struct {
 
 #define MAX_ROUTES 32
 
+typedef enum {
+    ROUTE_PERSPECTIVE,  /* source = { perspective = N } */
+    ROUTE_DIVISION,     /* source = { division = "name" } */
+    ROUTE_RANK,         /* source = { rank = "name" } */
+} RouteSourceType;
+
 typedef struct {
-    char    name[64];
-    int     perspective;            /* 1-indexed perspective number */
-    int     output_channels[MAX_OUTPUT_CHANNELS];
-    int     num_output_channels;
+    char            name[64];
+    RouteSourceType source_type;
+    int             perspective;        /* for ROUTE_PERSPECTIVE: 1-indexed */
+    int             division_index;     /* for ROUTE_DIVISION: index into divisions[] */
+    int             rank_index;         /* for ROUTE_RANK: index into ranks[] */
+    int             output_channels[MAX_OUTPUT_CHANNELS];
+    int             num_output_channels;
 } RoutingConfig;
 
 #define MAX_RANKS_PER_STOP 8

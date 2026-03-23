@@ -23,38 +23,62 @@ static jack_port_t   *ports[MAX_OUTPUT_CHANNELS];
 static int            num_ports;
 static JackEngineCtx *engine_ctx;
 
-/* Look up output routing for a given rank and perspective.
- * Returns default stereo routing (channels 0,1) if no routes configured. */
-static void get_routing(const OrganConfig *cfg, int rank_index,
+/* Apply a routing entry: set output channels and sample channel offset. */
+static void apply_route(const RoutingConfig *rc,
                         int *out_channels, int *num_out, int *src_offset)
 {
-    (void)rank_index;  /* used for future per-rank routing */
+    int persp = rc->perspective;  /* 1-indexed, only used for perspective routes */
+    int cpp = 2;  /* assume stereo perspectives */
 
-    /* For each routing entry, check if it matches */
+    *src_offset = (persp - 1) * cpp;
+    *num_out = rc->num_output_channels;
+    for (int j = 0; j < rc->num_output_channels; j++)
+        out_channels[j] = rc->output_channels[j] - 1;  /* 1-indexed → 0-indexed */
+}
+
+/* Look up output routing for a given rank and division.
+ * Precedence: rank > division > perspective.
+ * Returns default stereo routing (channels 0,1) if no routes configured. */
+static void get_routing(const OrganConfig *cfg, int rank_index, int div_index,
+                        int *out_channels, int *num_out, int *src_offset)
+{
+    const RoutingConfig *perspective_route = NULL;
+    const RoutingConfig *division_route = NULL;
+    const RoutingConfig *rank_route = NULL;
+
     for (int r = 0; r < cfg->num_routes; r++) {
         const RoutingConfig *rc = &cfg->routes[r];
-        /* TODO: future per-rank routing checks here */
-
-        /* Perspective routing: applies to all ranks */
-        int persp = rc->perspective;  /* 1-indexed */
-        int cpp = 2;  /* assume stereo perspectives for now */
-
-        /* Calculate sample channel offset for this perspective */
-        *src_offset = (persp - 1) * cpp;
-
-        /* Copy output channels (convert from 1-indexed to 0-indexed) */
-        *num_out = rc->num_output_channels;
-        for (int j = 0; j < rc->num_output_channels; j++)
-            out_channels[j] = rc->output_channels[j] - 1;
-        return;
+        switch (rc->source_type) {
+        case ROUTE_PERSPECTIVE:
+            if (!perspective_route)
+                perspective_route = rc;
+            break;
+        case ROUTE_DIVISION:
+            if (div_index >= 0 && rc->division_index == div_index)
+                division_route = rc;
+            break;
+        case ROUTE_RANK:
+            if (rc->rank_index == rank_index)
+                rank_route = rc;
+            break;
+        }
     }
 
-    /* No routing configured: default stereo to channels 0,1 */
-    *src_offset = 0;
-    *num_out = 2;
-    if (num_ports < 2) *num_out = num_ports;
-    out_channels[0] = 0;
-    if (*num_out > 1) out_channels[1] = 1;
+    /* Apply most specific match */
+    if (rank_route) {
+        apply_route(rank_route, out_channels, num_out, src_offset);
+    } else if (division_route) {
+        apply_route(division_route, out_channels, num_out, src_offset);
+    } else if (perspective_route) {
+        apply_route(perspective_route, out_channels, num_out, src_offset);
+    } else {
+        /* No routing configured: default stereo to channels 0,1 */
+        *src_offset = 0;
+        *num_out = 2;
+        if (num_ports < 2) *num_out = num_ports;
+        out_channels[0] = 0;
+        if (*num_out > 1) out_channels[1] = 1;
+    }
 }
 
 /* Helper: trigger engaged stops for a division, with routing */
@@ -75,7 +99,7 @@ static void trigger_division(int div_idx, uint8_t note, uint8_t velocity)
 
             int out_ch[MAX_OUTPUT_CHANNELS];
             int num_out, src_offset;
-            get_routing(cfg, rank_idx, out_ch, &num_out, &src_offset);
+            get_routing(cfg, rank_idx, div_idx, out_ch, &num_out, &src_offset);
 
             voice_pool_note_on(engine_ctx->voice_pool, note, velocity,
                                sample, div_idx, out_ch, num_out, src_offset);

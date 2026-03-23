@@ -3,7 +3,7 @@
 A custom, config-driven virtual pipe organ engine written in C for Linux. Designed as a dedicated headless appliance for playing sampled pipe organ sounds through a multi-channel speaker system, controlled via an iPad web interface over WiFi.
 
 > **Status: Active Development**
-> The core engine works — MIDI input, stereo sample playback with sustain looping and release tails, stop controls via MIDI CC, and JACK output. Not yet implemented: multi-channel routing, divisions/coupling, expression pedals, web interface. See [`docs/todo.md`](docs/todo.md) for current progress.
+> The core engine works — MIDI input, stereo sample playback with sustain looping and release tails, divisions with stop controls and expression pedals, coupling, multi-channel output routing, and computer keyboard mode. Not yet implemented: web interface, presets. See [`docs/todo.md`](docs/todo.md) for current progress.
 
 ## Building
 
@@ -111,27 +111,34 @@ The first number is the source (your keyboard), the second is the destination (t
 
 **Tip:** If the engine is not yet running when you run `aconnect -l`, the organ-engine port won't appear. Start the engine first, then connect.
 
-In a full organ setup with multiple keyboards (manuals) and a pedalboard, each physical MIDI device would be connected separately and assigned to different MIDI channels. The engine routes notes to ranks based on the `midi_channel` setting in the config.
+In a full organ setup with multiple keyboards (manuals) and a pedalboard, each physical MIDI device would be connected separately and assigned to different MIDI channels. The engine routes notes to divisions based on the `midi_channel` setting in each division's config.
 
 ## Configuration
 
-The engine is configured via a TOML file. Example:
+The engine is configured via a TOML file. See [`docs/config-reference.md`](docs/config-reference.md) for the complete reference. Brief example:
 
 ```toml
 [audio]
 sample_rate = 48000
 buffer_size = 1024
 jack_client_name = "organ"
+num_outputs = 2
 
 [ranks.gedackt8]
 sample_dir = "samples/Burea_Funeral_Chapel/Gedackt8"
 filename_pattern = "{note:03d}-{name}.wav"
-midi_channel = 1
-output_channels = [1, 2]
-engage_cc = 39       # optional: MIDI CC to toggle this rank as a stop
-```
 
-When `engage_cc` is set, the rank starts disengaged (silent) and is toggled on/off by MIDI CC events. Ranks without `engage_cc` always play.
+[routing.default]
+source = { perspective = 1 }
+output_channels = [1, 2]
+
+[divisions.manual]
+midi_channel = 2
+expression_cc = 11
+
+[divisions.manual.stops]
+gedackt8 = { rank = "gedackt8", engage_cc = 39 }
+```
 
 ### Filename pattern placeholders
 

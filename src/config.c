@@ -251,11 +251,51 @@ int config_load(OrganConfig *cfg, const char *path)
 
             RoutingConfig *rc = &cfg->routes[cfg->num_routes];
             strncpy(rc->name, route_key, sizeof(rc->name) - 1);
-            rc->perspective = 1;  /* default */
+            rc->source_type = ROUTE_PERSPECTIVE;
+            rc->perspective = 1;
+            rc->division_index = -1;
+            rc->rank_index = -1;
 
+            /* Parse source = { perspective = N } or
+             *        source = { division = "name" } or
+             *        source = { rank = "name" } */
+            toml_table_t *source = toml_table_in(route, "source");
             toml_datum_t val;
-            val = toml_int_in(route, "perspective");
-            if (val.ok) rc->perspective = (int)val.u.i;
+            if (source) {
+                val = toml_int_in(source, "perspective");
+                if (val.ok) {
+                    rc->source_type = ROUTE_PERSPECTIVE;
+                    rc->perspective = (int)val.u.i;
+                }
+                val = toml_string_in(source, "division");
+                if (val.ok) {
+                    rc->source_type = ROUTE_DIVISION;
+                    for (int d = 0; d < cfg->num_divisions; d++) {
+                        if (strcmp(cfg->divisions[d].name, val.u.s) == 0) {
+                            rc->division_index = d;
+                            break;
+                        }
+                    }
+                    if (rc->division_index < 0)
+                        fprintf(stderr, "config: route '%s' references unknown division '%s'\n",
+                                route_key, val.u.s);
+                    free(val.u.s);
+                }
+                val = toml_string_in(source, "rank");
+                if (val.ok) {
+                    rc->source_type = ROUTE_RANK;
+                    for (int ri = 0; ri < cfg->num_ranks; ri++) {
+                        if (strcmp(cfg->ranks[ri].name, val.u.s) == 0) {
+                            rc->rank_index = ri;
+                            break;
+                        }
+                    }
+                    if (rc->rank_index < 0)
+                        fprintf(stderr, "config: route '%s' references unknown rank '%s'\n",
+                                route_key, val.u.s);
+                    free(val.u.s);
+                }
+            }
 
             toml_array_t *channels = toml_array_in(route, "output_channels");
             if (channels) {
@@ -328,7 +368,21 @@ void config_print(const OrganConfig *cfg)
         printf("  routing: %d\n", cfg->num_routes);
         for (int r = 0; r < cfg->num_routes; r++) {
             const RoutingConfig *rc = &cfg->routes[r];
-            printf("    [%s] perspective=%d → outputs", rc->name, rc->perspective);
+            printf("    [%s] ", rc->name);
+            switch (rc->source_type) {
+            case ROUTE_PERSPECTIVE:
+                printf("perspective=%d", rc->perspective);
+                break;
+            case ROUTE_DIVISION:
+                printf("division=%s",
+                       rc->division_index >= 0 ? cfg->divisions[rc->division_index].name : "?");
+                break;
+            case ROUTE_RANK:
+                printf("rank=%s",
+                       rc->rank_index >= 0 ? cfg->ranks[rc->rank_index].name : "?");
+                break;
+            }
+            printf(" → outputs");
             for (int j = 0; j < rc->num_output_channels; j++)
                 printf(" %d", rc->output_channels[j]);
             printf("\n");
