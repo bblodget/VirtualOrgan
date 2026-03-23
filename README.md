@@ -145,6 +145,7 @@ When `engage_cc` is set, the rank starts disengaged (silent) and is toggled on/o
 
 ## Documentation
 
+- [`docs/config-reference.md`](docs/config-reference.md) — Complete TOML configuration reference
 - [`docs/organ-engine-project.md`](docs/organ-engine-project.md) — Project summary and architecture
 - [`docs/virtual-organ-handbook.md`](docs/virtual-organ-handbook.md) — Technical handbook covering concepts, theory, and technologies
 - [`docs/todo.md`](docs/todo.md) — Project roadmap and progress tracking
