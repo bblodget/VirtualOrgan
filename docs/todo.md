@@ -37,16 +37,19 @@
 - [x] Runtime gain controls (-/= keys in keyboard mode)
 - [x] Phase-aligned release crossfade (sustain to release tail)
 - [x] Clean sustain looping (no crossfade needed at zero-crossing loop points)
-
-## Phase 4 — Multi-Channel Routing
-
-- [ ] Per-division output channel assignment
-- [ ] Multiple JACK output port pairs
-
-## Phase 5 — Organ Features
-
 - [x] Coupling (one division triggers another, directional, CC-toggled)
 - [x] Multi-rank stops (rank = ["name1", "name2"] syntax)
+- [x] Multi-channel output routing with perspectives ([routing] config section)
+- [x] Dynamic JACK output port registration (num_outputs config)
+- [x] Per-voice output channel mapping
+- [x] Configuration reference documentation (docs/config-reference.md)
+
+## Phase 4 — Multi-Channel Routing (future enhancements)
+
+- [ ] Per-rank routing overrides
+- [ ] Per-note-range routing (bass splits)
+- [ ] Multi-perspective sample loading (multiple sample_dir per rank)
+- [ ] Test at Dad's house with Yamaha RX-A8A (8-channel HDMI)
 
 ## Phase 6 — Web Interface
 
