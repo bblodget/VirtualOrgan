@@ -299,9 +299,17 @@ int config_load(OrganConfig *cfg, const char *path)
                                 route_key, val.u.s);
                     free(val.u.s);
                 }
-                /* note_range inside source */
+                /* note_range inside source: [lo, hi] or [note] */
                 toml_array_t *nrange = toml_array_in(source, "note_range");
-                if (nrange && toml_array_nelem(nrange) == 2) {
+                int nelem = nrange ? toml_array_nelem(nrange) : 0;
+                if (nelem == 1) {
+                    toml_datum_t lo = toml_int_at(nrange, 0);
+                    if (lo.ok) {
+                        rc->note_range[0] = (int)lo.u.i;
+                        rc->note_range[1] = (int)lo.u.i;
+                        rc->has_note_range = true;
+                    }
+                } else if (nelem == 2) {
                     toml_datum_t lo = toml_int_at(nrange, 0);
                     toml_datum_t hi = toml_int_at(nrange, 1);
                     if (lo.ok && hi.ok) {

@@ -156,12 +156,19 @@ Multiple perspectives can come from:
 ### Note Range
 
 `note_range` can be added to a `rank` source to route
-different MIDI note ranges to different outputs (bass split):
+different MIDI note ranges to different outputs (bass split).
+The range is inclusive. Use a single element for one note.
 
 ```toml
+# Range of notes
 [routing.subbas_low]
 source = { rank = "subbas16", note_range = [36, 48] }
 output_channels = [5, 6]
+
+# Single note
+[routing.middle_c]
+source = { rank = "gedackt8", note_range = [60] }
+output_channels = [3, 4]
 ```
 
 ---
