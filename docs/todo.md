@@ -65,6 +65,7 @@
 
 ## Phase 7 — Polish
 
+- [ ] Config reload key in console mode (re-read TOML without restarting engine)
 - [ ] Presets / registrations (saved stop combinations)
 - [ ] Wind simulation (subtle pitch/amplitude LFO)
 - [ ] Master limiter to prevent clipping
