@@ -2,7 +2,7 @@
 sample_rate = 48000
 buffer_size = 1024
 jack_client_name = "organ"
-num_outputs = 2
+num_outputs = 8
 
 # Ranks — pure sample definitions
 [ranks.gedackt8]
@@ -33,18 +33,15 @@ filename_pattern = "{note:03d}-{name}.wav"
 sample_dir = "samples/Burea_Funeral_Chapel/Subbas16"
 filename_pattern = "{note:03d}-{name}.wav"
 
-# Routing — perspective to output speakers
-[routing.default]
-source = { perspective = 1 }
-output_channels = [1]
+# Routing — division to HDMI surround channels
+# HDMI 7.1: 1=FL 2=FR 3=FC 4=LFE 5=RL 6=RR 7=RC 8=RLC/RRC
+[routing.manual]
+source = { division = "manual" }
+output_channels = [1, 2]
 
-# [routing.manual]
-# source = { division = "manual" }
-# output_channels = [1]
-#
-# [routing.pedal]
-# source = { division = "pedal" }
-# output_channels = [2]
+[routing.pedal]
+source = { division = "pedal" }
+output_channels = [3, 4]
 
 
 # MIDI device mapping — remap keyboards to channels by ALSA client name
