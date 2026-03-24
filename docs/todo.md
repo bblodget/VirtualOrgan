@@ -54,7 +54,7 @@
 - [x] Per-rank routing overrides
 - [x] Per-note-range routing (bass splits)
 - [ ] Multi-perspective sample loading (multiple sample_dir per rank)
-- [ ] Keyboard splits (note_range on divisions — same MIDI channel, different stops per range)
+- [x] Keyboard splits (note_range on divisions — same MIDI channel, different stops per range)
 - [ ] Test at Dad's house with Yamaha RX-A8A (8-channel HDMI)
 
 ## Phase 6 — Web Interface
