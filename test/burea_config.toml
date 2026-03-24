@@ -44,35 +44,35 @@ source = { division = "pedal" }
 output_channels = [1]
 
 [routing.gedackt8_1]
-source = { rank = "gedackt8", note_range = [60] }
+source = { division = "manual", note_range = [60] }
 output_channels = [1]
 
 [routing.gedackt8_2]
-source = { rank = "gedackt8", note_range = [62] }
+source = { division = "manual", note_range = [62] }
 output_channels = [2]
 
 [routing.gedackt8_3]
-source = { rank = "gedackt8", note_range = [64] }
+source = { division = "manual", note_range = [64] }
 output_channels = [1]
 
 [routing.gedackt8_4]
-source = { rank = "gedackt8", note_range = [65] }
+source = { division = "manual", note_range = [65] }
 output_channels = [2]
 
 [routing.gedackt8_5]
-source = { rank = "gedackt8", note_range = [67] }
+source = { division = "manual", note_range = [67] }
 output_channels = [1]
 
 [routing.gedackt8_6]
-source = { rank = "gedackt8", note_range = [69] }
+source = { division = "manual", note_range = [69] }
 output_channels = [2]
 
 [routing.gedackt8_7]
-source = { rank = "gedackt8", note_range = [71] }
+source = { division = "manual", note_range = [71] }
 output_channels = [1]
 
 [routing.gedackt8_8]
-source = { rank = "gedackt8", note_range = [72] }
+source = { division = "manual", note_range = [72] }
 output_channels = [2]
 
 
