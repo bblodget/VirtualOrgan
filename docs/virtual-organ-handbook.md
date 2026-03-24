@@ -13,6 +13,7 @@ A guide to the concepts, theory, and technologies behind building a real-time vi
 5. [Lock-Free Programming for Audio](#chapter-5-lock-free-programming-for-audio)
 6. [Sample Playback and Digital Audio Fundamentals](#chapter-6-sample-playback-and-digital-audio-fundamentals)
 7. [Sample Sets — Where Pipe Sounds Come From](#chapter-7-sample-sets--where-pipe-sounds-come-from)
+8. [Multiple Keyboards and MIDI Device Mapping](#chapter-8-multiple-keyboards-and-midi-device-mapping)
 
 ---
 
@@ -587,4 +588,88 @@ Adding a short noise burst at the onset simulates the attack transient ("chiff")
 
 ---
 
-*This handbook will grow as the project develops. Future chapters will cover multi-channel audio routing, organ stops and coupling, the web interface, wind simulation, and system deployment.*
+## Chapter 8: Multiple Keyboards and MIDI Device Mapping
+
+### The Problem
+
+A real pipe organ has multiple keyboards. A typical setup:
+
+- **Manual I (Great)** — the main keyboard, played with the hands
+- **Manual II (Swell)** — a second keyboard above the Great
+- **Pedalboard** — a keyboard played with the feet
+
+Each keyboard controls a different **division** of the organ — a separate set of stops and pipes. In our virtual organ, divisions are mapped to MIDI channels: notes arriving on channel 1 trigger the manual division's stops, notes on channel 2 trigger the pedal division's stops, and so on.
+
+The problem is that most MIDI keyboards default to sending on **channel 1**. If you plug in two keyboards, they both send on channel 1 and the engine can't tell them apart.
+
+### How Commercial Software Solves This
+
+Some organists change the MIDI transmit channel in each keyboard's settings menu, but many keyboards bury this option or don't expose it at all.
+
+**Hauptwerk** (the commercial virtual organ) takes a different approach: during setup, it asks the user to play the lowest key and highest key on each keyboard. It identifies keyboards not by MIDI channel but by their **USB device identity** — each keyboard gets a unique ALSA sequencer client when plugged in.
+
+### Our Solution: ALSA Client Name Mapping
+
+We use a similar approach. When a USB MIDI keyboard is plugged into Linux, the kernel creates an ALSA sequencer client with a name derived from the device (e.g., "CH345" or "Digital Piano"). These names are visible with `aconnect -l`:
+
+```
+client 20: 'CH345' [type=kernel,card=1]
+    0 'CH345 MIDI 1    '
+client 24: 'Digital Piano' [type=kernel,card=2]
+    0 'Digital Piano MIDI 1'
+```
+
+Our engine's `[midi_devices]` config section maps these names to MIDI channels:
+
+```toml
+[midi_devices.CH345]
+channel = 1
+
+[midi_devices."Digital Piano"]
+channel = 2
+```
+
+At startup, the MIDI thread scans all ALSA sequencer clients, matches their names against the config (using substring matching, so "Digital Piano" matches "Digital Piano MIDI 1"), and builds an internal lookup table. When a MIDI event arrives, the engine checks which ALSA client sent it and **remaps the channel** before processing.
+
+This means:
+- Both keyboards can stay on their default channel 1
+- The engine transparently remaps based on which physical device the event came from
+- No keyboard configuration changes needed
+- Adding a new keyboard is just one line in the TOML config
+
+### Connecting Multiple Keyboards
+
+Each keyboard must be connected to the engine's ALSA sequencer port separately:
+
+```bash
+# Start the engine
+./organ-engine config.toml --console
+
+# In another terminal, connect both keyboards
+aconnect 20:0 128:0    # CH345 → organ-engine
+aconnect 24:0 128:0    # Digital Piano → organ-engine
+```
+
+The engine prints confirmation of each device mapping at startup:
+
+```
+midi: mapped 'CH345' (client 20) → channel 1
+midi: mapped 'Digital Piano' (client 24) → channel 2
+```
+
+### Console Controls
+
+When using real MIDI keyboards, the `--console` flag provides terminal-based controls for managing stops and volume without needing a GUI:
+
+- `Z X C V B N M` — toggle stops 1–7 in the active division
+- `Tab` — cycle which division the stop keys control
+- `[` / `]` — expression volume for the active division (like a swell pedal)
+- `-` / `=` — master gain (overall volume)
+- `Space` — all stops off in the active division
+- `` ` `` — toggle coupler(s)
+
+This works over SSH, making it possible to control the organ engine remotely from a laptop while sitting at the console.
+
+---
+
+*This handbook will grow as the project develops. Future chapters will cover the web interface, wind simulation, and system deployment.*
