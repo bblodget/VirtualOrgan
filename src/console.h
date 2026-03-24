@@ -20,8 +20,9 @@
 
 /* Start terminal console for stop/gain control.
  * Puts terminal in raw mode, reads keypresses in a thread.
+ * config_path is stored for config reload (R key).
  * Returns 0 on success. */
-int console_start(RingBuffer *rb, OrganConfig *config);
+int console_start(RingBuffer *rb, OrganConfig *config, const char *config_path);
 
 /* Stop console thread and restore terminal. */
 void console_stop(void);

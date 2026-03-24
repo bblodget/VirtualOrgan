@@ -69,7 +69,8 @@ static pthread_t kbd_thread;
 static volatile int running;
 static volatile int quit_requested;
 static RingBuffer *ring_buf;
-static const OrganConfig *organ_config;
+static OrganConfig *organ_config;
+static const char *config_path;
 static int active_division;  /* index into organ_config->divisions[] */
 
 static void print_help(void)
@@ -100,8 +101,24 @@ static void print_help(void)
                    organ_config->divisions[organ_config->couplers[c].to_division].name);
         printf("\n");
     }
-    printf("  -/= = gain down/up  Space = all stops off  H = this help\n");
-    printf("  Esc to quit\n\n");
+    printf("  -/= = gain down/up  Space = all stops off\n");
+    printf("  Shift+R = reload config  H = help  Esc = quit\n\n");
+}
+
+static void do_reload(void)
+{
+    if (!config_path) {
+        printf("reload: no config path\n");
+        return;
+    }
+    if (config_reload(organ_config, config_path) == 0) {
+        if (active_division >= organ_config->num_divisions)
+            active_division = 0;
+        printf("Config reloaded from %s\n", config_path);
+        print_help();
+    } else {
+        printf("reload: failed\n");
+    }
 }
 
 static void *keyboard_thread(void *arg)
@@ -189,6 +206,12 @@ static void *keyboard_thread(void *arg)
                 /* H = print help */
                 if (sc == SDL_SCANCODE_H) {
                     print_help();
+                    continue;
+                }
+
+                /* Shift+R = reload config */
+                if (sc == SDL_SCANCODE_R && (ev.key.keysym.mod & KMOD_SHIFT)) {
+                    do_reload();
                     continue;
                 }
 
@@ -281,10 +304,11 @@ static void *keyboard_thread(void *arg)
     return NULL;
 }
 
-int keyboard_start(RingBuffer *rb, const OrganConfig *config)
+int keyboard_start(RingBuffer *rb, OrganConfig *config, const char *path)
 {
     ring_buf = rb;
     organ_config = config;
+    config_path = path;
     running = 1;
     quit_requested = 0;
     active_division = 0;

@@ -20,8 +20,9 @@
 
 /* Start keyboard MIDI input using SDL2 for key-down/key-up events.
  * Opens a small SDL window that must have focus for input.
+ * config_path is stored for config reload (R key).
  * Returns 0 on success, -1 on error. */
-int keyboard_start(RingBuffer *rb, const OrganConfig *config);
+int keyboard_start(RingBuffer *rb, OrganConfig *config, const char *config_path);
 
 /* Stop keyboard input, close SDL, and clean up. */
 void keyboard_stop(void);

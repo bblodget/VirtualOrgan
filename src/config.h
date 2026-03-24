@@ -104,6 +104,12 @@ typedef struct {
 /* Load config from TOML file. Returns 0 on success, -1 on error. */
 int config_load(OrganConfig *cfg, const char *path);
 
+/* Reload config from disk into a live config.
+ * Re-parses the TOML and copies safe-to-change fields (divisions,
+ * couplers, routing, midi_devices). Ranks are NOT reloaded.
+ * Returns 0 on success, -1 on error. */
+int config_reload(OrganConfig *cfg, const char *path);
+
 /* Print config to stdout for debugging. */
 void config_print(const OrganConfig *cfg);
 

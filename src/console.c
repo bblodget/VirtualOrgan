@@ -25,6 +25,7 @@ static volatile int running;
 static volatile int quit_req;
 static RingBuffer *ring_buf;
 static OrganConfig *organ_config;
+static const char *config_path;
 static int active_division;
 
 static struct termios orig_termios;
@@ -95,7 +96,23 @@ static void print_help(void)
     }
 
     printf("  [/] = division volume  -/= = master gain  Space = all stops off\n");
-    printf("  H = help  Q = quit\n\n");
+    printf("  R = reload config  H = help  Q = quit\n\n");
+}
+
+static void do_reload(void)
+{
+    if (!config_path) {
+        printf("reload: no config path\n");
+        return;
+    }
+    if (config_reload(organ_config, config_path) == 0) {
+        if (active_division >= organ_config->num_divisions)
+            active_division = 0;
+        printf("Config reloaded from %s\n", config_path);
+        print_help();
+    } else {
+        printf("reload: failed\n");
+    }
 }
 
 static void *console_thread_fn(void *arg)
@@ -125,6 +142,12 @@ static void *console_thread_fn(void *arg)
         /* Help */
         if (c == 'h' || c == 'H') {
             print_help();
+            continue;
+        }
+
+        /* Reload config */
+        if (c == 'r' || c == 'R') {
+            do_reload();
             continue;
         }
 
@@ -208,10 +231,11 @@ static void *console_thread_fn(void *arg)
     return NULL;
 }
 
-int console_start(RingBuffer *rb, OrganConfig *config)
+int console_start(RingBuffer *rb, OrganConfig *config, const char *path)
 {
     ring_buf = rb;
     organ_config = config;
+    config_path = path;
     running = 1;
     quit_req = 0;
     active_division = 0;

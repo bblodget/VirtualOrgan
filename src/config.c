@@ -337,6 +337,41 @@ int config_load(OrganConfig *cfg, const char *path)
     return 0;
 }
 
+int config_reload(OrganConfig *cfg, const char *path)
+{
+    OrganConfig new_cfg;
+    if (config_load(&new_cfg, path) != 0)
+        return -1;
+
+    if (new_cfg.num_ranks != cfg->num_ranks) {
+        fprintf(stderr, "config_reload: rank count changed (%d → %d) — "
+                "restart engine to change ranks\n",
+                cfg->num_ranks, new_cfg.num_ranks);
+        return -1;
+    }
+
+    /* Copy safe-to-change fields */
+    cfg->num_outputs = new_cfg.num_outputs;
+
+    cfg->num_divisions = new_cfg.num_divisions;
+    for (int d = 0; d < new_cfg.num_divisions && d < MAX_DIVISIONS; d++)
+        cfg->divisions[d] = new_cfg.divisions[d];
+
+    cfg->num_couplers = new_cfg.num_couplers;
+    for (int c = 0; c < new_cfg.num_couplers && c < MAX_COUPLERS; c++)
+        cfg->couplers[c] = new_cfg.couplers[c];
+
+    cfg->num_routes = new_cfg.num_routes;
+    for (int r = 0; r < new_cfg.num_routes && r < MAX_ROUTES; r++)
+        cfg->routes[r] = new_cfg.routes[r];
+
+    cfg->num_midi_devices = new_cfg.num_midi_devices;
+    for (int m = 0; m < new_cfg.num_midi_devices && m < MAX_MIDI_DEVICES; m++)
+        cfg->midi_devices[m] = new_cfg.midi_devices[m];
+
+    return 0;
+}
+
 void config_print(const OrganConfig *cfg)
 {
     printf("Config:\n");

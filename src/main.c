@@ -105,7 +105,7 @@ int main(int argc, char **argv)
     /* Start MIDI input */
     if (keyboard_mode) {
         printf("\nStarting keyboard input...\n");
-        if (keyboard_start(&ring_buffer, &config) != 0) {
+        if (keyboard_start(&ring_buffer, &config, config_path) != 0) {
             fprintf(stderr, "error: cannot start keyboard input\n");
             for (int i = 0; i < config.num_ranks; i++)
                 sampler_free(&banks[i]);
@@ -144,7 +144,7 @@ int main(int argc, char **argv)
 
     /* Start console controls if requested */
     if (console_mode) {
-        if (console_start(&ring_buffer, &config) != 0) {
+        if (console_start(&ring_buffer, &config, config_path) != 0) {
             fprintf(stderr, "warning: cannot start console controls\n");
             console_mode = 0;
         }
