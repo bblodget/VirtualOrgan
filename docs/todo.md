@@ -43,6 +43,11 @@
 - [x] Dynamic JACK output port registration (num_outputs config)
 - [x] Per-voice output channel mapping
 - [x] Configuration reference documentation (docs/config-reference.md)
+- [x] Stop `engaged = true/false` initial state in config
+- [x] Terminal console mode (--console) for stop/gain controls over SSH
+- [x] Per-division expression volume controls in console ([/])
+- [x] MIDI device-to-channel mapping via ALSA client name ([midi_devices])
+- [x] Two-keyboard setup (manual + pedal on separate divisions)
 
 ## Phase 4 — Multi-Channel Routing (future enhancements)
 

@@ -68,11 +68,14 @@ pw-jack ./organ-engine test/test_config.toml --fake-midi
 # Play with computer keyboard (SDL2 window for input)
 pw-jack ./organ-engine test/burea_config.toml --keyboard
 
-# Real MIDI keyboard input (requires connecting a MIDI device, see below)
+# Real MIDI keyboard with console controls for stops/gain
+pw-jack ./organ-engine test/burea_config.toml --console
+
+# Real MIDI keyboard input only (requires connecting a MIDI device, see below)
 pw-jack ./organ-engine test/burea_config.toml
 ```
 
-Press `Ctrl+C` to stop (or `Esc` in keyboard mode).
+Press `Ctrl+C` to stop (or `Esc`/`Q` in keyboard/console mode).
 
 ### Computer Keyboard Mode
 
@@ -88,6 +91,19 @@ Q W E R T Y U I O P       (white keys: C D E F G A B C D E)
 - `Space` — all stops off
 - `H` — print help
 - `Esc` — quit
+
+### Console Mode
+
+With `--console`, the terminal provides stop and volume controls while you play a real MIDI keyboard. Works over SSH — no GUI needed.
+
+- `Z X C V B N M` — toggle stops 1-7 (in active division)
+- `Tab` — cycle active division
+- `[` / `]` — division expression volume down/up
+- `-` / `=` — master gain down/up
+- `` ` `` — toggle coupler(s)
+- `Space` — all stops off (active division)
+- `H` — print help
+- `Q` or `Esc` — quit
 
 ### Connecting a MIDI Keyboard
 

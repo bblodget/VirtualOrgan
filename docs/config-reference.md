@@ -195,12 +195,15 @@ combo = { rank = ["gedackt8", "salicional8"], engage_cc = 48 }
 |-------------|-----------------|---------------------------|
 | `rank`      | string or array | Rank name(s) to control.  |
 | `engage_cc` | int             | CC to toggle on/off.      |
+| `engaged`   | bool (optional) | Initial state. Default: `false`. |
 
 - `rank` — use a string for a single rank, or an array for
   a multi-rank stop (e.g. Mixture).
 - `engage_cc` — CC value >= 64 = engaged, < 64 = disengaged.
-- All stops start disengaged. They are toggled via MIDI CC
-  events (from a controller, web interface, or keyboard mode).
+- `engaged` — set to `true` to have this stop on at startup.
+  Useful for testing or default registrations.
+- Stops default to disengaged. They are toggled via MIDI CC
+  events (from a controller, console mode, or keyboard mode).
 
 ---
 
@@ -266,6 +269,12 @@ subbas16 = { rank = "subbas16", engage_cc = 36 }
 from = "pedal"
 to = "manual"
 engage_cc = 49
+
+[midi_devices.CH345]
+channel = 1
+
+[midi_devices."Digital Piano"]
+channel = 2
 ```
 
 ---
@@ -278,3 +287,34 @@ All sections except `[audio]` and `[ranks]` are optional:
 - **No `[divisions]`** — all ranks triggered by any channel,
   all ranks always play (no stop controls).
 - **No `[couplers]`** — no inter-division coupling.
+- **No `[midi_devices]`** — MIDI channels pass through unchanged.
+
+---
+
+## `[midi_devices.*]` — MIDI Device Channel Mapping
+
+Maps physical MIDI keyboards to MIDI channels based on their ALSA
+sequencer client name. This allows multiple keyboards on the same
+default channel (usually 1) to control different divisions without
+changing any keyboard settings.
+
+```toml
+[midi_devices.CH345]
+channel = 1
+
+[midi_devices."Digital Piano"]
+channel = 2
+```
+
+| Field     | Type | Description                              |
+|-----------|------|------------------------------------------|
+| `channel` | int  | MIDI channel to remap this device to (1-indexed). |
+
+- The table key (e.g. `CH345`, `"Digital Piano"`) is matched as a
+  **substring** against the ALSA sequencer client name. Use
+  `aconnect -l` to see device names.
+- Quote the key if the device name contains spaces.
+- At startup the engine scans all ALSA clients and prints which
+  devices were matched and remapped.
+- If no `[midi_devices]` section is present, MIDI channels pass
+  through from the keyboard unchanged.
