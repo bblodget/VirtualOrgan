@@ -51,7 +51,7 @@
 
 ## Phase 4 — Multi-Channel Routing (future enhancements)
 
-- [ ] Per-rank routing overrides
+- [x] Per-rank routing overrides
 - [ ] Per-note-range routing (bass splits)
 - [ ] Multi-perspective sample loading (multiple sample_dir per rank)
 - [ ] Test at Dad's house with Yamaha RX-A8A (8-channel HDMI)
