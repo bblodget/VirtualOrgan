@@ -33,94 +33,58 @@ filename_pattern = "{note:03d}-{name}.wav"
 sample_dir = "samples/Burea_Funeral_Chapel/Subbas16"
 filename_pattern = "{note:03d}-{name}.wav"
 
-# Routing — division to HDMI surround channels
-# HDMI 7.1: 1=FL 2=FR 3=FC 4=LFE 5=RL 6=RR 7=RC 8=RLC/RRC
-[routing.manual]
+# Routing — speaker test: 8 consecutive notes → 8 individual speakers
+# Default: any note not listed below goes to channel 1
+[routing.default]
 source = { division = "manual" }
 output_channels = [1]
 
-[routing.pedal]
-source = { division = "pedal" }
-output_channels = [1]
+# C4=ch1, D4=ch2, E4=ch3, F4=ch4, G4=ch5, A4=ch6, B4=ch7, C5=ch8
+[routing.note_60]
+source = { division = "manual", note_range = [60] }
+output_channels = [1]    # Front Left
 
-[routing.gedackt8_1]
-source = { division = "manual_lo", note_range = [60] }
-output_channels = [1]
+[routing.note_62]
+source = { division = "manual", note_range = [62] }
+output_channels = [2]    # Front Right
 
-[routing.gedackt8_2]
-source = { division = "manual_lo", note_range = [62] }
-output_channels = [2]
+[routing.note_64]
+source = { division = "manual", note_range = [64] }
+output_channels = [3]    # Rear Left
 
-[routing.gedackt8_3]
-source = { division = "manual_lo", note_range = [64] }
-output_channels = [1]
+[routing.note_65]
+source = { division = "manual", note_range = [65] }
+output_channels = [4]    # Rear Right
 
-[routing.gedackt8_4]
-source = { division = "manual_lo", note_range = [65] }
-output_channels = [2]
+[routing.note_67]
+source = { division = "manual", note_range = [67] }
+output_channels = [5]    # Front Center
 
-[routing.gedackt8_5]
-source = { division = "manual_high", note_range = [67] }
-output_channels = [1]
+[routing.note_69]
+source = { division = "manual", note_range = [69] }
+output_channels = [6]   # LFE - Subwoofer
 
-[routing.gedackt8_6]
-source = { division = "manual_high", note_range = [69] }
-output_channels = [2]
+[routing.note_71]
+source = { division = "manual", note_range = [71] }
+output_channels = [7]   # Rear Left Surround
 
-[routing.gedackt8_7]
-source = { division = "manual_high", note_range = [71] }
-output_channels = [1]
+[routing.note_72]
+source = { division = "manual", note_range = [72] }
+output_channels = [8]   # Rear Right Surround
 
-[routing.gedackt8_8]
-source = { division = "manual_high", note_range = [72] }
-output_channels = [2]
-
-
-
-# MIDI device mapping — remap keyboards to channels by ALSA client name
+# MIDI device mapping
 [midi_devices.CH345]
 channel = 1
 
-[midi_devices."Digital Piano"]
-channel = 2
-
-# Divisions — CC numbers from Bureå ODF
-[divisions.manual_lo]
+# Single division for speaker testing
+[divisions.manual]
 midi_channel = 1
 expression_cc = 11
-note_range = [ 60, 65]
 
-[divisions.manual_lo.stops]
+[divisions.manual.stops]
 gedackt8 = { rank = "gedackt8", engage_cc = 39, engaged = true }
-salicional8 = { rank = "salicional8", engage_cc = 37, engaged = false }
-voixceleste8 = { rank = "voixceleste8", engage_cc = 41, engaged = false }
+salicional8 = { rank = "salicional8", engage_cc = 37 }
+voixceleste8 = { rank = "voixceleste8", engage_cc = 41 }
 rorflojt4 = { rank = "rorflojt4", engage_cc = 43 }
 principal2 = { rank = "principal2", engage_cc = 45 }
 combo = { rank = ["gedackt8", "salicional8"], engage_cc = 48 }
-
-[divisions.manual_high]
-midi_channel = 1
-expression_cc = 51
-note_range = [ 67, 72]
-
-[divisions.manual_high.stops]
-gedackt8 = { rank = "gedackt8", engage_cc = 69, engaged = false }
-salicional8 = { rank = "salicional8", engage_cc = 67, engaged = true }
-voixceleste8 = { rank = "voixceleste8", engage_cc = 71, engaged = true }
-rorflojt4 = { rank = "rorflojt4", engage_cc = 73 }
-principal2 = { rank = "principal2", engage_cc = 75 }
-combo = { rank = ["gedackt8", "salicional8"], engage_cc = 78 }
-
-[divisions.pedal]
-midi_channel = 2
-expression_cc = 12
-
-[divisions.pedal.stops]
-subbas16 = { rank = "subbas16", engage_cc = 36, engaged = true }
-pedgedackt8 = { rank = "pedgedackt8", engage_cc = 47, engaged = true }
-
-# Couplers — CC number from Bureå ODF
-[couplers.pedal_to_manual]
-from = "pedal"
-to = "manual_lo"
-engage_cc = 49
