@@ -46,6 +46,8 @@ typedef struct {
     int             perspective;        /* for ROUTE_PERSPECTIVE: 1-indexed */
     int             division_index;     /* for ROUTE_DIVISION: index into divisions[] */
     int             rank_index;         /* for ROUTE_RANK: index into ranks[] */
+    int             note_range[2];      /* [low, high] MIDI note range (0 = unused) */
+    bool            has_note_range;
     int             output_channels[MAX_OUTPUT_CHANNELS];
     int             num_output_channels;
 } RoutingConfig;

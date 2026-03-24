@@ -36,15 +36,17 @@ static void apply_route(const RoutingConfig *rc,
         out_channels[j] = rc->output_channels[j] - 1;  /* 1-indexed → 0-indexed */
 }
 
-/* Look up output routing for a given rank and division.
- * Precedence: rank > division > perspective.
+/* Look up output routing for a given rank, division, and note.
+ * Precedence: rank+note_range > rank > division > perspective.
  * Returns default stereo routing (channels 0,1) if no routes configured. */
 static void get_routing(const OrganConfig *cfg, int rank_index, int div_index,
+                        int note,
                         int *out_channels, int *num_out, int *src_offset)
 {
     const RoutingConfig *perspective_route = NULL;
     const RoutingConfig *division_route = NULL;
     const RoutingConfig *rank_route = NULL;
+    const RoutingConfig *rank_note_route = NULL;
 
     for (int r = 0; r < cfg->num_routes; r++) {
         const RoutingConfig *rc = &cfg->routes[r];
@@ -58,14 +60,22 @@ static void get_routing(const OrganConfig *cfg, int rank_index, int div_index,
                 division_route = rc;
             break;
         case ROUTE_RANK:
-            if (rc->rank_index == rank_index)
-                rank_route = rc;
+            if (rc->rank_index == rank_index) {
+                if (rc->has_note_range) {
+                    if (note >= rc->note_range[0] && note <= rc->note_range[1])
+                        rank_note_route = rc;
+                } else {
+                    rank_route = rc;
+                }
+            }
             break;
         }
     }
 
     /* Apply most specific match */
-    if (rank_route) {
+    if (rank_note_route) {
+        apply_route(rank_note_route, out_channels, num_out, src_offset);
+    } else if (rank_route) {
         apply_route(rank_route, out_channels, num_out, src_offset);
     } else if (division_route) {
         apply_route(division_route, out_channels, num_out, src_offset);
@@ -99,7 +109,7 @@ static void trigger_division(int div_idx, uint8_t note, uint8_t velocity)
 
             int out_ch[MAX_OUTPUT_CHANNELS];
             int num_out, src_offset;
-            get_routing(cfg, rank_idx, div_idx, out_ch, &num_out, &src_offset);
+            get_routing(cfg, rank_idx, div_idx, note, out_ch, &num_out, &src_offset);
 
             voice_pool_note_on(engine_ctx->voice_pool, note, velocity,
                                sample, div_idx, out_ch, num_out, src_offset);

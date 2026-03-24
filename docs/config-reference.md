@@ -76,14 +76,16 @@ an inline table with exactly one key identifying the type:
 | `perspective` | int    | A mic perspective (1+).    |
 | `division`    | string | All stops in a division.   |
 | `rank`        | string | A specific rank by name.   |
+| `note_range`  | array  | [low, high] MIDI note range (with rank). |
 
 ### Source Precedence
 
 More specific routes override more general ones:
 
-1. `rank` — most specific, overrides division/perspective
-2. `division` — overrides perspective
-3. `perspective` — default for all ranks
+1. `rank` + `note_range` — most specific
+2. `rank` — overrides division/perspective
+3. `division` — overrides perspective
+4. `perspective` — default for all ranks
 
 ### Examples
 
@@ -112,6 +114,15 @@ output_channels = [3, 4]
 [routing.subbas_sub]
 source = { rank = "subbas16" }
 output_channels = [3, 4]
+
+# Note-range routing — bass split
+[routing.subbas_low]
+source = { rank = "subbas16", note_range = [36, 48] }
+output_channels = [3, 4]
+
+[routing.subbas_high]
+source = { rank = "subbas16", note_range = [49, 67] }
+output_channels = [1, 2]
 ```
 
 ### Fields
@@ -142,15 +153,14 @@ Multiple perspectives can come from:
 - **Separate directories** — (future) each perspective in
   its own sample directory.
 
-### Future Routing Features
+### Note Range
 
-Per-note-range routing is planned:
+`note_range` can be added to a `rank` source to route
+different MIDI note ranges to different outputs (bass split):
 
 ```toml
-# Route low pedal notes to subwoofer (future)
-[routing.pedal_bass]
-source = { rank = "subbas16" }
-note_range = [36, 48]
+[routing.subbas_low]
+source = { rank = "subbas16", note_range = [36, 48] }
 output_channels = [5, 6]
 ```
 

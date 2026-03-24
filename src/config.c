@@ -261,9 +261,10 @@ int config_load(OrganConfig *cfg, const char *path)
 
             /* Parse source = { perspective = N } or
              *        source = { division = "name" } or
-             *        source = { rank = "name" } */
+             *        source = { rank = "name", note_range = [lo, hi] } */
             toml_table_t *source = toml_table_in(route, "source");
             toml_datum_t val;
+            rc->has_note_range = false;
             if (source) {
                 val = toml_int_in(source, "perspective");
                 if (val.ok) {
@@ -297,6 +298,17 @@ int config_load(OrganConfig *cfg, const char *path)
                         fprintf(stderr, "config: route '%s' references unknown rank '%s'\n",
                                 route_key, val.u.s);
                     free(val.u.s);
+                }
+                /* note_range inside source */
+                toml_array_t *nrange = toml_array_in(source, "note_range");
+                if (nrange && toml_array_nelem(nrange) == 2) {
+                    toml_datum_t lo = toml_int_at(nrange, 0);
+                    toml_datum_t hi = toml_int_at(nrange, 1);
+                    if (lo.ok && hi.ok) {
+                        rc->note_range[0] = (int)lo.u.i;
+                        rc->note_range[1] = (int)hi.u.i;
+                        rc->has_note_range = true;
+                    }
                 }
             }
 
@@ -439,6 +451,8 @@ void config_print(const OrganConfig *cfg)
                        rc->rank_index >= 0 ? cfg->ranks[rc->rank_index].name : "?");
                 break;
             }
+            if (rc->has_note_range)
+                printf(" notes=%d-%d", rc->note_range[0], rc->note_range[1]);
             printf(" → outputs");
             for (int j = 0; j < rc->num_output_channels; j++)
                 printf(" %d", rc->output_channels[j]);

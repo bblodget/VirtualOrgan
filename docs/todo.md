@@ -52,7 +52,7 @@
 ## Phase 4 — Multi-Channel Routing (future enhancements)
 
 - [x] Per-rank routing overrides
-- [ ] Per-note-range routing (bass splits)
+- [x] Per-note-range routing (bass splits)
 - [ ] Multi-perspective sample loading (multiple sample_dir per rank)
 - [ ] Test at Dad's house with Yamaha RX-A8A (8-channel HDMI)
 
@@ -70,6 +70,10 @@
 - [ ] Wind simulation (subtle pitch/amplitude LFO)
 - [ ] Master limiter to prevent clipping
 - [ ] GrandOrgue ODF parser (read organ definitions directly)
+
+## Bugs
+
+- [ ] Intermittent segfault on startup (does not reproduce with ASAN, likely threading/memory issue)
 
 ## Ideas / Future
 
