@@ -114,7 +114,7 @@ int main(int argc, char **argv)
         }
     } else {
         printf("\nStarting MIDI input%s...\n", fake_midi ? " (fake mode)" : "");
-        if (midi_start(&ring_buffer, fake_midi) != 0) {
+        if (midi_start(&ring_buffer, fake_midi, &config) != 0) {
             fprintf(stderr, "error: cannot start MIDI thread\n");
             for (int i = 0; i < config.num_ranks; i++)
                 sampler_free(&banks[i]);

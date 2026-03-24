@@ -47,6 +47,13 @@ output_channels = [1]
 # output_channels = [2]
 
 
+# MIDI device mapping — remap keyboards to channels by ALSA client name
+[midi_devices.CH345]
+channel = 1
+
+[midi_devices."Digital Piano"]
+channel = 2
+
 # Divisions — CC numbers from Bureå ODF
 [divisions.manual]
 midi_channel = 1

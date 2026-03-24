@@ -77,6 +77,13 @@ typedef struct {
     bool    engaged;        /* runtime state, starts false */
 } CouplerConfig;
 
+#define MAX_MIDI_DEVICES 8
+
+typedef struct {
+    char    name[64];       /* ALSA client name to match */
+    int     channel;        /* MIDI channel to remap to (1-indexed) */
+} MidiDeviceConfig;
+
 typedef struct {
     int             sample_rate;
     int             buffer_size;
@@ -90,6 +97,8 @@ typedef struct {
     int             num_couplers;
     RoutingConfig   routes[MAX_ROUTES];
     int             num_routes;
+    MidiDeviceConfig midi_devices[MAX_MIDI_DEVICES];
+    int             num_midi_devices;
 } OrganConfig;
 
 /* Load config from TOML file. Returns 0 on success, -1 on error. */

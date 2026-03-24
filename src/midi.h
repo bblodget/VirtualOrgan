@@ -17,10 +17,13 @@
 
 #include <stdbool.h>
 #include "ring_buffer.h"
+#include "config.h"
 
 /* Start MIDI input thread. If fake_midi is true, generates test events
- * instead of reading from ALSA sequencer. Returns 0 on success. */
-int midi_start(RingBuffer *rb, bool fake_midi);
+ * instead of reading from ALSA sequencer. config is used to remap
+ * MIDI channels based on [midi_devices] section (may be NULL).
+ * Returns 0 on success. */
+int midi_start(RingBuffer *rb, bool fake_midi, const OrganConfig *config);
 
 /* Stop MIDI input thread and clean up. */
 void midi_stop(void);

@@ -21,6 +21,58 @@
 
 static pthread_t midi_thread;
 static volatile int running;
+static const OrganConfig *midi_config;
+
+/* Client-to-channel mapping: maps ALSA client IDs to MIDI channels.
+ * Built at startup by matching ALSA client names to [midi_devices] config. */
+#define MAX_CLIENT_MAP 32
+static struct {
+    int client_id;
+    int channel;    /* 1-indexed */
+} client_map[MAX_CLIENT_MAP];
+static int num_client_map;
+
+/* Look up remapped channel for an ALSA source client.
+ * Returns the mapped channel (1-indexed) or 0 if no mapping found. */
+static int lookup_client_channel(int client_id)
+{
+    for (int i = 0; i < num_client_map; i++) {
+        if (client_map[i].client_id == client_id)
+            return client_map[i].channel;
+    }
+    return 0;  /* no mapping — use original channel */
+}
+
+/* Build client_map by scanning ALSA sequencer clients and matching
+ * their names against [midi_devices] config entries. */
+static void build_client_map(snd_seq_t *seq)
+{
+    num_client_map = 0;
+    if (!midi_config || midi_config->num_midi_devices == 0)
+        return;
+
+    snd_seq_client_info_t *cinfo;
+    snd_seq_client_info_alloca(&cinfo);
+    snd_seq_client_info_set_client(cinfo, -1);
+
+    while (snd_seq_query_next_client(seq, cinfo) >= 0) {
+        const char *cname = snd_seq_client_info_get_name(cinfo);
+        int cid = snd_seq_client_info_get_client(cinfo);
+
+        for (int m = 0; m < midi_config->num_midi_devices; m++) {
+            if (strstr(cname, midi_config->midi_devices[m].name) != NULL) {
+                if (num_client_map < MAX_CLIENT_MAP) {
+                    client_map[num_client_map].client_id = cid;
+                    client_map[num_client_map].channel = midi_config->midi_devices[m].channel;
+                    printf("midi: mapped '%s' (client %d) → channel %d\n",
+                           cname, cid, midi_config->midi_devices[m].channel);
+                    num_client_map++;
+                }
+                break;
+            }
+        }
+    }
+}
 
 /* ---- Fake MIDI mode: play a repeating scale ---- */
 
@@ -97,6 +149,9 @@ static void *alsa_midi_thread(void *arg)
     printf("midi: ALSA sequencer port created (connect with aconnect)\n");
     printf("midi: client %d, port %d\n", snd_seq_client_id(seq), port);
 
+    /* Build ALSA client → MIDI channel mapping from config */
+    build_client_map(seq);
+
     /* Set up polling */
     int npfds = snd_seq_poll_descriptors_count(seq, POLLIN);
     struct pollfd *pfds = malloc(npfds * sizeof(struct pollfd));
@@ -111,15 +166,15 @@ static void *alsa_midi_thread(void *arg)
         while (running && (err = snd_seq_event_input(seq, &ev)) >= 0) {
             MidiEvent me = {0};
 
+            /* Remap channel based on source ALSA client */
+            int mapped_ch = lookup_client_channel(ev->source.client);
+
             switch (ev->type) {
             case SND_SEQ_EVENT_NOTEON:
                 me.type     = MIDI_NOTE_ON;
                 me.channel  = ev->data.note.channel + 1;
                 me.note     = ev->data.note.note;
                 me.velocity = ev->data.note.velocity;
-                fprintf(stderr, "midi: NOTE_ON ch=%d note=%d vel=%d\n",
-                        me.channel, me.note, me.velocity);
-                ring_buffer_push(rb, &me);
                 break;
 
             case SND_SEQ_EVENT_NOTEOFF:
@@ -127,7 +182,6 @@ static void *alsa_midi_thread(void *arg)
                 me.channel  = ev->data.note.channel + 1;
                 me.note     = ev->data.note.note;
                 me.velocity = 0;
-                ring_buffer_push(rb, &me);
                 break;
 
             case SND_SEQ_EVENT_CONTROLLER:
@@ -135,12 +189,21 @@ static void *alsa_midi_thread(void *arg)
                 me.channel  = ev->data.control.channel + 1;
                 me.note     = ev->data.control.param;
                 me.velocity = ev->data.control.value;
-                ring_buffer_push(rb, &me);
                 break;
 
             default:
-                break;
+                continue;  /* skip unknown events */
             }
+
+            /* Remap channel if this client has a mapping */
+            if (mapped_ch > 0)
+                me.channel = mapped_ch;
+
+            fprintf(stderr, "midi: %s ch=%d note=%d vel=%d\n",
+                    me.type == MIDI_NOTE_ON ? "NOTE_ON" :
+                    me.type == MIDI_NOTE_OFF ? "NOTE_OFF" : "CC",
+                    me.channel, me.note, me.velocity);
+            ring_buffer_push(rb, &me);
         }
     }
 
@@ -149,8 +212,9 @@ static void *alsa_midi_thread(void *arg)
     return NULL;
 }
 
-int midi_start(RingBuffer *rb, bool fake_midi)
+int midi_start(RingBuffer *rb, bool fake_midi, const OrganConfig *config)
 {
+    midi_config = config;
     running = 1;
 
     if (fake_midi)

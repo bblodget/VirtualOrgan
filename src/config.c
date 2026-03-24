@@ -314,6 +314,25 @@ int config_load(OrganConfig *cfg, const char *path)
         }
     }
 
+    /* [midi_devices.*] sections (optional) */
+    toml_table_t *midi_devs = toml_table_in(root, "midi_devices");
+    if (midi_devs) {
+        int nm = toml_table_ntab(midi_devs);
+        for (int m = 0; m < nm && cfg->num_midi_devices < MAX_MIDI_DEVICES; m++) {
+            const char *dev_key = toml_key_in(midi_devs, m);
+            toml_table_t *dev = toml_table_in(midi_devs, dev_key);
+            if (!dev) continue;
+
+            MidiDeviceConfig *md = &cfg->midi_devices[cfg->num_midi_devices];
+            strncpy(md->name, dev_key, sizeof(md->name) - 1);
+
+            toml_datum_t val = toml_int_in(dev, "channel");
+            if (val.ok) md->channel = (int)val.u.i;
+
+            cfg->num_midi_devices++;
+        }
+    }
+
     toml_free(root);
     return 0;
 }
@@ -389,6 +408,14 @@ void config_print(const OrganConfig *cfg)
             for (int j = 0; j < rc->num_output_channels; j++)
                 printf(" %d", rc->output_channels[j]);
             printf("\n");
+        }
+    }
+
+    if (cfg->num_midi_devices > 0) {
+        printf("  midi_devices: %d\n", cfg->num_midi_devices);
+        for (int m = 0; m < cfg->num_midi_devices; m++) {
+            const MidiDeviceConfig *md = &cfg->midi_devices[m];
+            printf("    \"%s\" → channel %d\n", md->name, md->channel);
         }
     }
 }
