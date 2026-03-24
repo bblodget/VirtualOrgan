@@ -5,7 +5,7 @@ LDFLAGS = $(shell pkg-config --libs jack sndfile alsa sdl2) -lm -lpthread
 
 # Source files
 SRC     = src/main.c src/config.c src/sampler.c src/voice.c src/mixer.c \
-          src/midi.c src/keyboard.c src/jack_engine.c src/ring_buffer.c
+          src/midi.c src/keyboard.c src/console.c src/jack_engine.c src/ring_buffer.c
 VENDOR  = vendor/tomlc99/toml.c
 OBJ     = $(SRC:.c=.o) $(VENDOR:.c=.o)
 

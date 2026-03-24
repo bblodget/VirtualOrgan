@@ -23,6 +23,7 @@
 #include "ring_buffer.h"
 #include "midi.h"
 #include "keyboard.h"
+#include "console.h"
 #include "jack_engine.h"
 
 static volatile int quit = 0;
@@ -35,7 +36,7 @@ static void signal_handler(int sig)
 
 static void usage(const char *prog)
 {
-    fprintf(stderr, "Usage: %s <config.toml> [--fake-midi | --keyboard]\n", prog);
+    fprintf(stderr, "Usage: %s <config.toml> [--fake-midi | --keyboard | --console]\n", prog);
 }
 
 int main(int argc, char **argv)
@@ -48,12 +49,15 @@ int main(int argc, char **argv)
     const char *config_path = argv[1];
     int fake_midi = 0;
     int keyboard_mode = 0;
+    int console_mode = 0;
 
     for (int i = 2; i < argc; i++) {
         if (strcmp(argv[i], "--fake-midi") == 0)
             fake_midi = 1;
         else if (strcmp(argv[i], "--keyboard") == 0)
             keyboard_mode = 1;
+        else if (strcmp(argv[i], "--console") == 0)
+            console_mode = 1;
     }
 
     /* Load config */
@@ -138,24 +142,39 @@ int main(int argc, char **argv)
         return 1;
     }
 
+    /* Start console controls if requested */
+    if (console_mode) {
+        if (console_start(&ring_buffer, &config) != 0) {
+            fprintf(stderr, "warning: cannot start console controls\n");
+            console_mode = 0;
+        }
+    }
+
     /* Wait for signal */
     signal(SIGINT, signal_handler);
     signal(SIGTERM, signal_handler);
 
     printf("\nOrgan engine running. Press %s to stop.\n\n",
-           keyboard_mode ? "Esc in SDL window" : "Ctrl+C");
+           keyboard_mode ? "Esc in SDL window" :
+           console_mode ? "Q or Esc" : "Ctrl+C");
 
     while (!quit) {
         if (keyboard_mode && keyboard_quit_requested())
             quit = 1;
-        printf("\rVoices: %d  ", voice_pool.active_count);
-        fflush(stdout);
+        if (console_mode && console_quit_requested())
+            quit = 1;
+        if (!console_mode) {
+            printf("\rVoices: %d  ", voice_pool.active_count);
+            fflush(stdout);
+        }
         usleep(100000);  /* update display 10x/sec */
     }
 
     printf("\n\nShutting down...\n");
 
     jack_engine_stop();
+    if (console_mode)
+        console_stop();
     if (keyboard_mode)
         keyboard_stop();
     else
