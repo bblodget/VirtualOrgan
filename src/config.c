@@ -121,6 +121,27 @@ int config_load(OrganConfig *cfg, const char *path)
             val = toml_int_in(div, "expression_cc");
             if (val.ok) dc->expression_cc = (int)val.u.i;
 
+            /* Optional note_range for keyboard splits */
+            dc->has_note_range = false;
+            toml_array_t *nrange = toml_array_in(div, "note_range");
+            int nelem = nrange ? toml_array_nelem(nrange) : 0;
+            if (nelem == 1) {
+                toml_datum_t lo = toml_int_at(nrange, 0);
+                if (lo.ok) {
+                    dc->note_range[0] = (int)lo.u.i;
+                    dc->note_range[1] = (int)lo.u.i;
+                    dc->has_note_range = true;
+                }
+            } else if (nelem == 2) {
+                toml_datum_t lo = toml_int_at(nrange, 0);
+                toml_datum_t hi = toml_int_at(nrange, 1);
+                if (lo.ok && hi.ok) {
+                    dc->note_range[0] = (int)lo.u.i;
+                    dc->note_range[1] = (int)hi.u.i;
+                    dc->has_note_range = true;
+                }
+            }
+
             /* Parse stops within this division */
             toml_table_t *stops = toml_table_in(div, "stops");
             if (stops) {
@@ -415,6 +436,8 @@ void config_print(const OrganConfig *cfg)
         for (int d = 0; d < cfg->num_divisions; d++) {
             const DivisionConfig *dc = &cfg->divisions[d];
             printf("    [%s] midi_channel=%d", dc->name, dc->midi_channel);
+            if (dc->has_note_range)
+                printf(" notes=%d-%d", dc->note_range[0], dc->note_range[1]);
             if (dc->expression_cc >= 0)
                 printf(" expression_cc=%d", dc->expression_cc);
             printf("\n");

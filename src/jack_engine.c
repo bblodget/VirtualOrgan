@@ -129,7 +129,11 @@ static int process_callback(jack_nframes_t nframes, void *arg)
             if (cfg->num_divisions > 0) {
                 /* Division-aware: find matching division by MIDI channel */
                 for (int d = 0; d < cfg->num_divisions; d++) {
-                    if (cfg->divisions[d].midi_channel != ev.channel)
+                    DivisionConfig *dc = &cfg->divisions[d];
+                    if (dc->midi_channel != ev.channel)
+                        continue;
+                    if (dc->has_note_range &&
+                        (ev.note < dc->note_range[0] || ev.note > dc->note_range[1]))
                         continue;
 
                     trigger_division(d, ev.note, ev.velocity);

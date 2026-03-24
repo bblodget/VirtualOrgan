@@ -67,6 +67,8 @@ typedef struct {
     int         midi_channel;              /* MIDI channel for this division */
     int         expression_cc;             /* CC for expression pedal (-1 = none) */
     float       expression_gain;           /* runtime: 0.0–1.0, default 1.0 */
+    int         note_range[2];             /* [low, high] MIDI note range (optional) */
+    bool        has_note_range;
     StopConfig  stops[MAX_STOPS_PER_DIV];
     int         num_stops;
 } DivisionConfig;
