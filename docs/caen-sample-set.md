@@ -7,6 +7,8 @@ The organ at St. Étienne in Caen, France was built by **Aristide Cavaillé-Coll
 The sample set is a **free demo** from **Sonus Paradisi**, one of the premier commercial organ sample producers. It includes a selection of stops from each division — enough to play and demonstrate the instrument, though not the complete organ.
 
 - **Source**: Sonus Paradisi (sonusparadisi.cz)
+- **Download**: Free, requires account — add to cart (price 0) and checkout at:
+  https://www.sonusparadisi.cz/en/organs/france/caen-st-etienne/caen-organ-model-surround-383.html
 - **Format**: Hauptwerk installation package
 - **File**: `Caen_Demo.CompPkg.Hauptwerk.rar` (7.0 GB compressed, ~23 GB extracted)
 - **Total WAV files**: 13,123
