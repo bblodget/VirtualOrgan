@@ -21,13 +21,11 @@
 #include "config.h"
 
 #define MAX_VOICES 128
-#define CROSSFADE_FRAMES 64  /* ~1.5ms at 44.1kHz */
 
 typedef enum {
-    VOICE_ATTACK,        /* playing from 0 toward loop_start */
-    VOICE_SUSTAIN,       /* looping between loop_start and loop_end */
-    VOICE_RELEASE_XFADE, /* crossfading from current pos to release tail */
-    VOICE_RELEASE,       /* playing release tail to end of sample */
+    VOICE_ATTACK,   /* playing from 0 toward loop_start */
+    VOICE_SUSTAIN,  /* looping between loop_start and loop_end */
+    VOICE_RELEASE,  /* fading out from current position */
 } VoicePhase;
 
 typedef struct {
@@ -42,9 +40,7 @@ typedef struct {
     int          out_channels[MAX_OUTPUT_CHANNELS]; /* 0-indexed output buffer indices */
     int          num_out_channels;                  /* how many outputs this voice writes to */
     int          src_channel_offset;                /* first sample channel for this perspective */
-    int          xfade_from; /* source position for release crossfade */
-    int          xfade_to;   /* destination position in release tail */
-    int          xfade_pos;  /* progress counter (0 to CROSSFADE_FRAMES) */
+    int          release_pos; /* frames into fade-out (0 to RELEASE_FADE_FRAMES) */
 } Voice;
 
 typedef struct {

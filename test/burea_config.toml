@@ -2,7 +2,7 @@
 sample_rate = 48000
 buffer_size = 1024
 jack_client_name = "organ"
-num_outputs = 8
+num_outputs = 2
 
 # Ranks — pure sample definitions
 [ranks.gedackt8]
@@ -33,44 +33,10 @@ filename_pattern = "{note:03d}-{name}.wav"
 sample_dir = "samples/Burea_Funeral_Chapel/Subbas16"
 filename_pattern = "{note:03d}-{name}.wav"
 
-# Routing — speaker test: 8 consecutive notes → 8 individual speakers
-# Default: any note not listed below goes to channel 1
+# Routing — stereo output
 [routing.default]
-source = { division = "manual" }
-output_channels = [1]
-
-# C4=ch1, D4=ch2, E4=ch3, F4=ch4, G4=ch5, A4=ch6, B4=ch7, C5=ch8
-[routing.note_60]
-source = { division = "manual", note_range = [60] }
-output_channels = [1]    # Front Left
-
-[routing.note_62]
-source = { division = "manual", note_range = [62] }
-output_channels = [2]    # Front Right
-
-[routing.note_64]
-source = { division = "manual", note_range = [64] }
-output_channels = [3]    # Rear Left
-
-[routing.note_65]
-source = { division = "manual", note_range = [65] }
-output_channels = [4]    # Rear Right
-
-[routing.note_67]
-source = { division = "manual", note_range = [67] }
-output_channels = [5]    # Front Center
-
-[routing.note_69]
-source = { division = "manual", note_range = [69] }
-output_channels = [6]   # LFE - Subwoofer
-
-[routing.note_71]
-source = { division = "manual", note_range = [71] }
-output_channels = [7]   # Rear Left Surround
-
-[routing.note_72]
-source = { division = "manual", note_range = [72] }
-output_channels = [8]   # Rear Right Surround
+source = { perspective = 1 }
+output_channels = [1, 2]
 
 # MIDI device mapping
 [midi_devices.CH345]

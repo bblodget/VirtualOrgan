@@ -38,6 +38,7 @@ Voice *voice_pool_note_on(VoicePool *pool, uint8_t note, uint8_t velocity,
             v->position  = 0;
             v->phase     = VOICE_ATTACK;
             v->note_held = true;
+            v->release_pos = 0;
             v->division  = division;
             v->num_out_channels = num_out;
             v->src_channel_offset = src_channel_offset;
@@ -75,22 +76,6 @@ static inline void output_frame(const Voice *v, int pos, float gain,
     }
 }
 
-/* Write one crossfaded frame to the voice's routed output channels. */
-static inline void output_crossfade_frame(const Voice *v, int pos, int wrap_pos,
-                                          float fade_out, float fade_in, float gain,
-                                          float **bufs, int buf_idx)
-{
-    const Sample *s = v->sample;
-    for (int i = 0; i < v->num_out_channels; i++) {
-        int out_ch = v->out_channels[i];
-        int src_ch = v->src_channel_offset + i;
-        if (src_ch >= s->channels) src_ch = v->src_channel_offset;
-        float val = s->data[src_ch][pos] * fade_out
-                  + s->data[src_ch][wrap_pos] * fade_in;
-        bufs[out_ch][buf_idx] += val * gain;
-    }
-}
-
 /* Render one sustain frame. Loop points are chosen at zero-crossings
  * by the sample set creator, so no crossfade is needed at the boundary. */
 static inline void render_sustain(Voice *voice, const Sample *s,
@@ -109,37 +94,13 @@ static inline void render_sustain(Voice *voice, const Sample *s,
  * equivalent offset into the release:
  *   release_start = loop_end + (current_pos - loop_start)
  * If no loop points, apply a short fade-out from current position. */
-static inline void begin_release(Voice *voice, const Sample *s)
+/* Fade-out duration: ~250ms at 48kHz */
+#define RELEASE_FADE_FRAMES 12000
+
+static inline void begin_release(Voice *voice)
 {
-    if (s->has_loop) {
-        int offset;
-        if (voice->position >= s->loop_start) {
-            /* In sustain: offset within the loop */
-            offset = voice->position - s->loop_start;
-            int loop_len = s->loop_end - s->loop_start;
-            if (loop_len > 0) offset = offset % loop_len;
-        } else {
-            /* In attack: mirror distance from loop_start.
-             * N frames before loop_start → N frames before loop_end
-             * in the release tail. */
-            int dist = s->loop_start - voice->position;
-            offset = (s->loop_end - s->loop_start) - dist;
-            if (offset < 0) offset = 0;
-        }
-
-        int release_pos = s->loop_end + offset;
-        /* Ensure release + crossfade fits within sample */
-        if (release_pos + CROSSFADE_FRAMES >= s->frames)
-            release_pos = s->loop_end;
-
-        voice->xfade_from = voice->position;
-        voice->xfade_to = release_pos;
-        voice->xfade_pos = 0;
-        voice->phase = VOICE_RELEASE_XFADE;
-    } else {
-        /* No loop points: just play to end of sample */
-        voice->phase = VOICE_RELEASE;
-    }
+    voice->release_pos = 0;
+    voice->phase = VOICE_RELEASE;
 }
 
 bool voice_render(Voice *voice, float **bufs, int num_channels, int nframes,
@@ -162,7 +123,7 @@ bool voice_render(Voice *voice, float **bufs, int num_channels, int nframes,
             voice->position++;
 
             if (!voice->note_held) {
-                begin_release(voice, s);
+                begin_release(voice);
                 break;
             }
 
@@ -172,45 +133,36 @@ bool voice_render(Voice *voice, float **bufs, int num_channels, int nframes,
 
         case VOICE_SUSTAIN:
             if (!voice->note_held) {
-                begin_release(voice, s);
+                begin_release(voice);
                 break;
             }
 
             render_sustain(voice, s, gain, bufs, i);
             break;
 
-        case VOICE_RELEASE_XFADE: {
-            /* Crossfade from current playback position to release tail */
-            int from_pos = voice->xfade_from + voice->xfade_pos;
-            int to_pos   = voice->xfade_to + voice->xfade_pos;
-
-            if (from_pos >= s->frames) from_pos = s->frames - 1;
-            if (to_pos >= s->frames) to_pos = s->frames - 1;
-
-            float fade_out = 1.0f - (float)voice->xfade_pos / CROSSFADE_FRAMES;
-            float fade_in  = (float)voice->xfade_pos / CROSSFADE_FRAMES;
-
-            output_crossfade_frame(voice, from_pos, to_pos,
-                                   fade_out, fade_in, gain, bufs, i);
-            voice->xfade_pos++;
-
-            if (voice->xfade_pos >= CROSSFADE_FRAMES) {
-                /* Crossfade complete, continue playing release tail */
-                voice->position = voice->xfade_to + voice->xfade_pos;
-                voice->phase = VOICE_RELEASE;
-            }
-            break;
-        }
-
-        case VOICE_RELEASE:
-            if (voice->position >= s->frames) {
+        case VOICE_RELEASE: {
+            /* Fade out from current position, continuing loop */
+            float fade = 1.0f - (float)voice->release_pos / RELEASE_FADE_FRAMES;
+            if (fade <= 0.0f) {
                 voice->active = false;
                 return false;
             }
 
-            output_frame(voice, voice->position, gain, bufs, i);
+            output_frame(voice, voice->position, gain * fade, bufs, i);
             voice->position++;
+            voice->release_pos++;
+
+            /* Keep looping if we have loop points */
+            if (s->has_loop && voice->position >= s->loop_end)
+                voice->position = s->loop_start;
+
+            /* End if no loop and past sample end */
+            if (voice->position >= s->frames) {
+                voice->active = false;
+                return false;
+            }
             break;
+        }
         }
     }
 
