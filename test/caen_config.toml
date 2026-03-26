@@ -2,7 +2,7 @@
 sample_rate = 48000
 buffer_size = 1024
 jack_client_name = "organ"
-num_outputs = 2
+num_outputs = 8
 
 # Caen St. Étienne, Cavaillé-Coll (Demo)
 # Using "Diff" (diffuse) microphone perspective, dry samples
@@ -82,10 +82,13 @@ filename_pattern = "{note:03d}-{name}.wav"
 # Simple stereo routing
 [routing.default]
 source = { perspective = 1 }
-output_channels = [1, 2]
+output_channels = [6]
 
 # MIDI device mapping
 [midi_devices.CH345]
+channel = 1
+
+[midi_devices."Digital Piano"]
 channel = 1
 
 # Grand Orgue (Great)
