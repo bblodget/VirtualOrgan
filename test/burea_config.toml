@@ -41,11 +41,11 @@ output_channels = [1, 2]
 
 # MIDI device mapping
 [midi_devices.CH345]
-channel = 1
+midi_channel = 1
 
 # Single division for speaker testing
 [divisions.manual]
-midi_channel = 1
+midi_midi_channel = 1
 expression_cc = 11
 
 [divisions.manual.stops]

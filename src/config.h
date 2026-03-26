@@ -46,7 +46,8 @@ typedef enum {
 typedef struct {
     char            name[64];
     RouteSourceType source_type;
-    int             perspective;        /* for ROUTE_PERSPECTIVE: 1-indexed */
+    int             perspective;        /* 1-indexed perspective number (default 1) */
+    int             channel;            /* 1-indexed channel within perspective (0 = all channels) */
     int             division_index;     /* for ROUTE_DIVISION: index into divisions[] */
     int             rank_index;         /* for ROUTE_RANK: index into ranks[] */
     int             note_range[2];      /* [low, high] MIDI note range (0 = unused) */
@@ -88,7 +89,7 @@ typedef struct {
 
 typedef struct {
     char    name[64];       /* ALSA client name to match */
-    int     channel;        /* MIDI channel to remap to (1-indexed) */
+    int     midi_channel;   /* MIDI channel to remap to (1-indexed) */
 } MidiDeviceConfig;
 
 typedef struct {

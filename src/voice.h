@@ -40,6 +40,7 @@ typedef struct {
     int          out_channels[MAX_OUTPUT_CHANNELS]; /* 0-indexed output buffer indices */
     int          num_out_channels;                  /* how many outputs this voice writes to */
     int          src_channel_offset;                /* first sample channel for this perspective */
+    bool         mono_source;                      /* true = use same src channel for all outputs */
     int          release_pos; /* frames into fade-out (0 to RELEASE_FADE_FRAMES) */
 } Voice;
 
@@ -57,7 +58,8 @@ void voice_pool_init(VoicePool *pool);
  * Returns pointer to voice, or NULL if pool full. */
 Voice *voice_pool_note_on(VoicePool *pool, uint8_t note, uint8_t velocity,
                           const Sample *sample, int division,
-                          const int *out_channels, int num_out, int src_channel_offset);
+                          const int *out_channels, int num_out, int src_channel_offset,
+                          bool mono_source);
 
 /* Deactivate all voices playing the given note. */
 void voice_pool_note_off(VoicePool *pool, uint8_t note);

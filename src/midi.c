@@ -63,9 +63,9 @@ static void build_client_map(snd_seq_t *seq)
             if (strstr(cname, midi_config->midi_devices[m].name) != NULL) {
                 if (num_client_map < MAX_CLIENT_MAP) {
                     client_map[num_client_map].client_id = cid;
-                    client_map[num_client_map].channel = midi_config->midi_devices[m].channel;
+                    client_map[num_client_map].channel = midi_config->midi_devices[m].midi_channel;
                     printf("midi: mapped '%s' (client %d) → channel %d\n",
-                           cname, cid, midi_config->midi_devices[m].channel);
+                           cname, cid, midi_config->midi_devices[m].midi_channel);
                     num_client_map++;
                 }
                 break;

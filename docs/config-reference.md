@@ -9,10 +9,11 @@ This document describes all available sections and fields.
 
 ```toml
 [audio]
-sample_rate = 48000        # expected sample rate (informational)
-buffer_size = 1024         # expected buffer size (informational)
-jack_client_name = "organ" # JACK client name
-num_outputs = 2            # number of JACK output ports (default 2)
+sample_rate = 48000
+buffer_size = 1024
+jack_client_name = "organ"
+num_outputs = 2
+release_fade_ms = 100
 ```
 
 | Field              | Type   | Default | Description                    |
@@ -26,6 +27,8 @@ num_outputs = 2            # number of JACK output ports (default 2)
 - `sample_rate` and `buffer_size` are informational — JACK
   determines the actual values.
 - Set `num_outputs` to 8 for 7.1 surround via HDMI.
+- `release_fade_ms` controls how quickly notes fade after
+  key release. Lower values (50-100) feel more responsive.
 
 ---
 
@@ -36,21 +39,31 @@ Each rank is a set of WAV files for one pipe type
 no stop controls or division assignments.
 
 ```toml
+# Single directory (one perspective)
 [ranks.gedackt8]
 sample_dir = "samples/Burea_Funeral_Chapel/Gedackt8"
 filename_pattern = "{note:03d}-{name}.wav"
-num_perspectives = 1
+
+# Multiple directories (two perspectives)
+[ranks.montre8]
+sample_dir = [
+    "samples/.../goDiff/Montre8",
+    "samples/.../goRear/Montre8"
+]
+filename_pattern = "{note:03d}-{name}.wav"
 ```
 
-| Field              | Type   | Default          | Description              |
-|--------------------|--------|------------------|--------------------------|
-| `sample_dir`       | string | (required)       | Directory of WAV files.  |
-| `filename_pattern` | string | `{note:03d}.wav` | WAV filename pattern.    |
-| `num_perspectives` | int    | 1                | Mic perspectives count.  |
+| Field              | Type             | Default          | Description             |
+|--------------------|------------------|------------------|-------------------------|
+| `sample_dir`       | string or array  | (required)       | Directory of WAV files. |
+| `filename_pattern` | string           | `{note:03d}.wav` | WAV filename pattern.   |
 
-- `filename_pattern` — see placeholders below.
-- `num_perspectives` — used with routing to determine channels
-  per perspective: `sample_channels / num_perspectives`.
+- `sample_dir` — a string for one directory, or an array
+  of strings for multiple directories (one per perspective).
+  Each directory's stereo channels are concatenated:
+  2 dirs × stereo = 4 channels (L1, R1, L2, R2).
+- `num_perspectives` is inferred from the number of
+  directories (1 for a string, N for an array of N).
 
 ### Filename Pattern Placeholders
 
@@ -62,6 +75,9 @@ num_perspectives = 1
 | `{name}`     | Note name (# for sharps) | `C`         |
 | `{octave}`   | Octave number            | `4`         |
 
+If a file is not found, the sampler retries with a
+lowercase variant (e.g. `024-c.wav` for low pedal notes).
+
 ---
 
 ## `[routing.*]` — Output Channel Routing
@@ -69,24 +85,37 @@ num_perspectives = 1
 Routes audio sources to physical output speakers. Each
 routing entry maps a source to one or more output channels.
 
-The `source` field determines what is being routed. It is
-an inline table with exactly one key identifying the type:
+The `source` field is an inline table with keys:
 
-| Source Key    | Value  | Routes...                  |
-|---------------|--------|----------------------------|
-| `perspective` | int    | A mic perspective (1+).    |
-| `division`    | string | All stops in a division.   |
-| `rank`        | string | A specific rank by name.   |
-| `note_range`  | array  | [low, high] MIDI note range (with rank). |
+| Source Key    | Value  | Description                    |
+|---------------|--------|--------------------------------|
+| `perspective` | int    | Mic perspective (1+).          |
+| `division`    | string | All stops in a division.       |
+| `rank`        | string | A specific rank by name.       |
+| `note_range`  | array  | [low, high] MIDI note range.   |
+| `channel`     | int    | Channel within perspective (1+). |
 
 ### Source Precedence
 
-More specific routes override more general ones:
+Rank/division routes override perspective routes.
+Multiple perspective routes create multiple voices
+(one per perspective for multi-perspective support).
 
-1. `rank` + `note_range` — most specific
-2. `rank` — overrides division/perspective
-3. `division` — overrides perspective
-4. `perspective` — default for all ranks
+1. `rank` or `division` routes — most specific
+2. `perspective` routes — default for all ranks
+
+### Source Channel Selection
+
+By default, all channels within a perspective are mapped
+to the output channels. Use `channel` to select a single
+channel and duplicate it to all outputs:
+
+```toml
+# Fix mono-in-stereo: use only right channel (2)
+[routing.recit_fix]
+source = { division = "swell", perspective = 1, channel = 2 }
+output_channels = [1, 2]
+```
 
 ### Examples
 
@@ -101,20 +130,15 @@ output_channels = [1, 2]
 source = { perspective = 2 }
 output_channels = [3, 4]
 
-# Division routing — all manual stops to front
-[routing.manual_front]
-source = { division = "manual" }
-output_channels = [1, 2]
-
 # Division routing — pedal to subwoofer
 [routing.pedal_sub]
 source = { division = "pedal" }
 output_channels = [3, 4]
 
-# Rank routing — override for a specific rank
-[routing.subbas_sub]
-source = { rank = "subbas16" }
-output_channels = [3, 4]
+# Rank routing — specific rank + perspective
+[routing.subbas_close]
+source = { rank = "subbas16", perspective = 1 }
+output_channels = [6]
 
 # Note-range routing — bass split
 [routing.subbas_low]
@@ -128,10 +152,10 @@ output_channels = [1, 2]
 
 ### Fields
 
-| Field             | Type         | Description              |
-|-------------------|--------------|--------------------------|
+| Field             | Type         | Description                |
+|-------------------|--------------|----------------------------|
 | `source`          | inline table | What to route (see above). |
-| `output_channels` | int array    | JACK port numbers (1+).  |
+| `output_channels` | int array    | JACK port numbers (1+).    |
 
 - If no `[routing]` section is present, all audio defaults
   to stereo output on channels 1-2.
@@ -143,30 +167,21 @@ recording the organ. Most sample sets have one perspective
 (one stereo pair). Professional sets may have multiple
 perspectives (close, rear, ambient).
 
-`perspective` maps to sample channels based on
-`num_perspectives` in the rank config.
-
-Multiple perspectives can come from:
-
-- **Multi-channel WAV files** — a 4-channel WAV with
-  `num_perspectives = 2` gives two stereo perspectives
-  (channels 1-2 = close, channels 3-4 = rear).
-- **Separate directories** — (future) each perspective in
-  its own sample directory.
+Multiple perspectives are loaded from separate directories
+via the `sample_dir` array on ranks. The routing then maps
+each perspective to different output speakers.
 
 ### Note Range
 
-`note_range` can be added to a `rank` source to route
-different MIDI note ranges to different outputs (bass split).
-The range is inclusive. Use a single element for one note.
+`note_range` can be added to a source to route different
+MIDI note ranges to different outputs (bass split). The
+range is inclusive. Use a single element for one note.
 
 ```toml
-# Range of notes
 [routing.subbas_low]
 source = { rank = "subbas16", note_range = [36, 48] }
 output_channels = [5, 6]
 
-# Single note
 [routing.middle_c]
 source = { rank = "gedackt8", note_range = [60] }
 output_channels = [3, 4]
@@ -176,9 +191,9 @@ output_channels = [3, 4]
 
 ## `[divisions.*]` — Organ Divisions
 
-A division groups stops under one keyboard/pedalboard with a
-dedicated MIDI channel. Each division can have an expression
-pedal for volume control.
+A division groups stops under one keyboard/pedalboard with
+a dedicated MIDI channel. Each division can have an
+expression pedal for volume control.
 
 ```toml
 [divisions.manual]
@@ -190,37 +205,32 @@ midi_channel = 1
 note_range = [24, 35]
 ```
 
-| Field           | Type       | Default    | Description               |
-|-----------------|------------|------------|---------------------------|
-| `midi_channel`  | int        | (required) | MIDI channel (1-16).      |
-| `expression_cc` | int        | (none)     | CC for expression pedal.  |
-| `note_range`    | int array  | (none)     | MIDI note range [low, high]. |
+| Field           | Type      | Default    | Description              |
+|-----------------|-----------|------------|--------------------------|
+| `midi_channel`  | int       | (required) | MIDI channel (1-16).     |
+| `expression_cc` | int       | (none)     | CC for expression pedal. |
+| `note_range`    | int array | (none)     | MIDI note range.         |
 
 - `midi_channel` — notes on this channel trigger this
   division's engaged stops.
 - `expression_cc` — CC value 0-127 maps to gain 0.0-1.0.
-- `note_range` — restricts this division to a range of MIDI
-  notes. Use `[low, high]` for a range (inclusive) or `[note]`
-  for a single note. Notes outside the range are ignored.
-  This enables **keyboard splits** — multiple divisions on
-  the same MIDI channel responding to different note ranges.
+- `note_range` — restricts this division to a range of
+  MIDI notes. Use `[low, high]` (inclusive) or `[note]`.
+  Enables **keyboard splits** — multiple divisions on the
+  same MIDI channel responding to different note ranges.
 - If no `[divisions]` section is present, all ranks are
   triggered by any MIDI channel (legacy mode).
 
 ### Keyboard Splits
 
-Multiple divisions can share the same `midi_channel` if they
-have non-overlapping `note_range` values. This is useful when
-a single keyboard needs to control different divisions in
-different ranges:
+Multiple divisions can share the same `midi_channel` with
+non-overlapping `note_range` values:
 
 ```toml
-# Great division — upper range of keyboard
 [divisions.great]
 midi_channel = 1
 note_range = [36, 96]
 
-# Pedal division — lower range of same keyboard
 [divisions.pedal]
 midi_channel = 1
 note_range = [24, 35]
@@ -228,8 +238,8 @@ note_range = [24, 35]
 
 ### `[divisions.*.stops]` — Stop Definitions
 
-Stops belong to a division. Each stop references one or more
-ranks and has a MIDI CC for engage/disengage.
+Stops belong to a division. Each stop references one or
+more ranks and has a MIDI CC for engage/disengage.
 
 ```toml
 [divisions.manual.stops]
@@ -238,19 +248,16 @@ salicional8 = { rank = "salicional8", engage_cc = 37 }
 combo = { rank = ["gedackt8", "salicional8"], engage_cc = 48 }
 ```
 
-| Field       | Type            | Description               |
-|-------------|-----------------|---------------------------|
-| `rank`      | string or array | Rank name(s) to control.  |
-| `engage_cc` | int             | CC to toggle on/off.      |
-| `engaged`   | bool (optional) | Initial state. Default: `false`. |
+| Field       | Type            | Description              |
+|-------------|-----------------|--------------------------|
+| `rank`      | string or array | Rank name(s) to control. |
+| `engage_cc` | int             | CC to toggle on/off.     |
+| `engaged`   | bool (optional) | Initial state (default: false). |
 
-- `rank` — use a string for a single rank, or an array for
-  a multi-rank stop (e.g. Mixture).
-- `engage_cc` — CC value >= 64 = engaged, < 64 = disengaged.
-- `engaged` — set to `true` to have this stop on at startup.
-  Useful for testing or default registrations.
-- Stops default to disengaged. They are toggled via MIDI CC
-  events (from a controller, console mode, or keyboard mode).
+- `rank` — string for a single rank, array for a
+  multi-rank stop (e.g. Mixture).
+- `engage_cc` — CC value >= 64 = engaged, < 64 = off.
+- `engaged` — set to `true` to start this stop on.
 
 ---
 
@@ -266,15 +273,43 @@ to = "manual"
 engage_cc = 49
 ```
 
-| Field       | Type   | Description                  |
-|-------------|--------|------------------------------|
-| `from`      | string | Source division name.        |
-| `to`        | string | Destination division name.   |
-| `engage_cc` | int    | CC to toggle on/off.         |
+| Field       | Type   | Description                |
+|-------------|--------|----------------------------|
+| `from`      | string | Source division name.       |
+| `to`        | string | Destination division name. |
+| `engage_cc` | int    | CC to toggle on/off.       |
 
 - When engaged, notes on `from` also trigger `to`'s stops.
 - Naming convention: `from_to_to` (e.g. `pedal_to_manual`).
 - All couplers start disengaged.
+
+---
+
+## `[midi_devices.*]` — MIDI Device Channel Mapping
+
+Maps physical MIDI keyboards to MIDI channels based on
+their ALSA sequencer client name. Allows multiple keyboards
+to control different divisions without changing keyboard
+settings.
+
+```toml
+[midi_devices.CH345]
+midi_channel = 1
+
+[midi_devices."Digital Piano"]
+midi_channel = 2
+```
+
+| Field          | Type | Description                     |
+|----------------|------|---------------------------------|
+| `midi_channel` | int  | MIDI channel to remap to (1+).  |
+
+- The table key (e.g. `CH345`) is matched as a
+  **substring** against the ALSA client name.
+- Quote the key if the name contains spaces.
+- Use `aconnect -l` to see device names.
+- If no `[midi_devices]` section is present, MIDI
+  channels pass through unchanged.
 
 ---
 
@@ -286,6 +321,7 @@ sample_rate = 48000
 buffer_size = 1024
 jack_client_name = "organ"
 num_outputs = 2
+release_fade_ms = 100
 
 [ranks.gedackt8]
 sample_dir = "samples/Burea_Funeral_Chapel/Gedackt8"
@@ -299,15 +335,18 @@ filename_pattern = "{note:03d}-{name}.wav"
 source = { perspective = 1 }
 output_channels = [1, 2]
 
+[midi_devices.CH345]
+midi_channel = 1
+
 [divisions.manual]
-midi_channel = 2
+midi_channel = 1
 expression_cc = 11
 
 [divisions.manual.stops]
-gedackt8 = { rank = "gedackt8", engage_cc = 39 }
+gedackt8 = { rank = "gedackt8", engage_cc = 39, engaged = true }
 
 [divisions.pedal]
-midi_channel = 1
+midi_channel = 2
 
 [divisions.pedal.stops]
 subbas16 = { rank = "subbas16", engage_cc = 36 }
@@ -316,12 +355,6 @@ subbas16 = { rank = "subbas16", engage_cc = 36 }
 from = "pedal"
 to = "manual"
 engage_cc = 49
-
-[midi_devices.CH345]
-channel = 1
-
-[midi_devices."Digital Piano"]
-channel = 2
 ```
 
 ---
@@ -334,34 +367,4 @@ All sections except `[audio]` and `[ranks]` are optional:
 - **No `[divisions]`** — all ranks triggered by any channel,
   all ranks always play (no stop controls).
 - **No `[couplers]`** — no inter-division coupling.
-- **No `[midi_devices]`** — MIDI channels pass through unchanged.
-
----
-
-## `[midi_devices.*]` — MIDI Device Channel Mapping
-
-Maps physical MIDI keyboards to MIDI channels based on their ALSA
-sequencer client name. This allows multiple keyboards on the same
-default channel (usually 1) to control different divisions without
-changing any keyboard settings.
-
-```toml
-[midi_devices.CH345]
-channel = 1
-
-[midi_devices."Digital Piano"]
-channel = 2
-```
-
-| Field     | Type | Description                              |
-|-----------|------|------------------------------------------|
-| `channel` | int  | MIDI channel to remap this device to (1-indexed). |
-
-- The table key (e.g. `CH345`, `"Digital Piano"`) is matched as a
-  **substring** against the ALSA sequencer client name. Use
-  `aconnect -l` to see device names.
-- Quote the key if the device name contains spaces.
-- At startup the engine scans all ALSA clients and prints which
-  devices were matched and remapped.
-- If no `[midi_devices]` section is present, MIDI channels pass
-  through from the keyboard unchanged.
+- **No `[midi_devices]`** — MIDI channels pass through.

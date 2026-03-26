@@ -143,11 +143,11 @@ output_channels = [2]
 
 # MIDI device mapping
 [midi_devices.CH345]
-channel = 1
+midi_channel = 1
 
 # Grand Orgue (Great)
 [divisions.great]
-midi_channel = 1
+midi_midi_channel = 1
 expression_cc = 11
 
 [divisions.great.stops]
@@ -170,6 +170,11 @@ fluteoctaviante4 = { rank = "fluteoctaviante4", engage_cc = 52 }
 nasard = { rank = "nasard", engage_cc = 53 }
 octavin2 = { rank = "octavin2", engage_cc = 54 }
 cornet = { rank = "cornet", engage_cc = 55 }
+
+# Fix Récit silent left channel — use only right channel (2)
+[routing.recit_fix]
+source = { division = "swell", perspective = 1, channel = 2 }
+output_channels = [1, 2]
 
 # Positif (Choir)
 [divisions.choir]

@@ -29,8 +29,15 @@ static void apply_route(const RoutingConfig *rc,
                         int *out_channels, int *num_out, int *src_offset,
                         int cpp)
 {
-    int persp = rc->perspective;  /* 1-indexed, only used for perspective routes */
+    int persp = rc->perspective;  /* 1-indexed */
     *src_offset = (persp - 1) * cpp;
+
+    /* If a specific channel within the perspective is selected,
+     * offset to that exact sample channel. The voice's output_frame()
+     * will duplicate it to all output channels. */
+    if (rc->channel > 0)
+        *src_offset += (rc->channel - 1);
+
     *num_out = rc->num_output_channels;
     for (int j = 0; j < rc->num_output_channels; j++)
         out_channels[j] = rc->output_channels[j] - 1;  /* 1-indexed → 0-indexed */
@@ -50,8 +57,9 @@ static void create_voice(int div_idx, uint8_t note, uint8_t velocity,
     int out_ch[MAX_OUTPUT_CHANNELS];
     int num_out, src_offset;
     apply_route(rc, out_ch, &num_out, &src_offset, cpp);
+    bool mono = (rc->channel > 0);
     voice_pool_note_on(engine_ctx->voice_pool, note, velocity,
-                       sample, div_idx, out_ch, num_out, src_offset);
+                       sample, div_idx, out_ch, num_out, src_offset, mono);
 }
 
 /* Helper: trigger engaged stops for a division, with routing.
@@ -120,7 +128,7 @@ static void trigger_division(int div_idx, uint8_t note, uint8_t velocity)
                 int out_ch[] = {0, 1};
                 int n = (num_ports < 2) ? num_ports : 2;
                 voice_pool_note_on(engine_ctx->voice_pool, note, velocity,
-                                   sample, div_idx, out_ch, n, 0);
+                                   sample, div_idx, out_ch, n, 0, false);
             }
         }
     }
@@ -163,7 +171,7 @@ static int process_callback(jack_nframes_t nframes, void *arg)
                     const Sample *sample = &engine_ctx->sample_banks[r].samples[ev.note];
                     if (sample->data)
                         voice_pool_note_on(engine_ctx->voice_pool, ev.note, ev.velocity,
-                                           sample, -1, out_ch, num_out, 0);
+                                           sample, -1, out_ch, num_out, 0, false);
                 }
             }
         } else if (ev.type == MIDI_NOTE_OFF ||

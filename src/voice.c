@@ -23,7 +23,8 @@ void voice_pool_init(VoicePool *pool)
 
 Voice *voice_pool_note_on(VoicePool *pool, uint8_t note, uint8_t velocity,
                           const Sample *sample, int division,
-                          const int *out_channels, int num_out, int src_channel_offset)
+                          const int *out_channels, int num_out, int src_channel_offset,
+                          bool mono_source)
 {
     if (!sample || !sample->data)
         return NULL;
@@ -43,6 +44,7 @@ Voice *voice_pool_note_on(VoicePool *pool, uint8_t note, uint8_t velocity,
             v->division  = division;
             v->num_out_channels = num_out;
             v->src_channel_offset = src_channel_offset;
+            v->mono_source = mono_source;
             for (int c = 0; c < num_out && c < MAX_OUTPUT_CHANNELS; c++)
                 v->out_channels[c] = out_channels[c];
             pool->active_count++;
@@ -71,8 +73,8 @@ static inline void output_frame(const Voice *v, int pos, float gain,
     /* Iterate output channels and map to sample channels from this perspective */
     for (int i = 0; i < v->num_out_channels; i++) {
         int out_ch = v->out_channels[i];
-        int src_ch = v->src_channel_offset + i;
-        if (src_ch >= s->channels) src_ch = v->src_channel_offset; /* duplicate first */
+        int src_ch = v->src_channel_offset + (v->mono_source ? 0 : i);
+        if (src_ch >= s->channels) src_ch = v->src_channel_offset;
         bufs[out_ch][buf_idx] += s->data[src_ch][pos] * gain;
     }
 }

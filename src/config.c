@@ -296,10 +296,11 @@ int config_load(OrganConfig *cfg, const char *path)
             strncpy(rc->name, route_key, sizeof(rc->name) - 1);
             rc->source_type = ROUTE_PERSPECTIVE;
             rc->perspective = 1;
+            rc->channel = 0;  /* 0 = all channels (default) */
             rc->division_index = -1;
             rc->rank_index = -1;
 
-            /* Parse source = { perspective = N } or
+            /* Parse source = { perspective = N, channel = N } or
              *        source = { division = "name" } or
              *        source = { rank = "name", note_range = [lo, hi] } */
             toml_table_t *source = toml_table_in(route, "source");
@@ -358,6 +359,9 @@ int config_load(OrganConfig *cfg, const char *path)
                         rc->has_note_range = true;
                     }
                 }
+                /* channel inside source: pick one channel from perspective */
+                val = toml_int_in(source, "channel");
+                if (val.ok) rc->channel = (int)val.u.i;
             }
 
             toml_array_t *channels = toml_array_in(route, "output_channels");
@@ -386,8 +390,8 @@ int config_load(OrganConfig *cfg, const char *path)
             MidiDeviceConfig *md = &cfg->midi_devices[cfg->num_midi_devices];
             strncpy(md->name, dev_key, sizeof(md->name) - 1);
 
-            toml_datum_t val = toml_int_in(dev, "channel");
-            if (val.ok) md->channel = (int)val.u.i;
+            toml_datum_t val = toml_int_in(dev, "midi_channel");
+            if (val.ok) md->midi_channel = (int)val.u.i;
 
             cfg->num_midi_devices++;
         }
@@ -503,6 +507,8 @@ void config_print(const OrganConfig *cfg)
                        rc->rank_index >= 0 ? cfg->ranks[rc->rank_index].name : "?");
                 break;
             }
+            if (rc->channel > 0)
+                printf(" ch=%d", rc->channel);
             if (rc->has_note_range)
                 printf(" notes=%d-%d", rc->note_range[0], rc->note_range[1]);
             printf(" → outputs");
@@ -516,7 +522,7 @@ void config_print(const OrganConfig *cfg)
         printf("  midi_devices: %d\n", cfg->num_midi_devices);
         for (int m = 0; m < cfg->num_midi_devices; m++) {
             const MidiDeviceConfig *md = &cfg->midi_devices[m];
-            printf("    \"%s\" → channel %d\n", md->name, md->channel);
+            printf("    \"%s\" → midi_channel %d\n", md->name, md->midi_channel);
         }
     }
 }
