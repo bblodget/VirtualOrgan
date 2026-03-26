@@ -232,7 +232,7 @@ output_channels = [3, 4, 6, 7 ,8]
 
 # MIDI device mapping
 [midi_devices.CH345]
-channel = 1
+channel = 2
 
 [midi_devices."Digital Piano"]
 channel = 1
@@ -245,10 +245,10 @@ expression_cc = 11
 
 [divisions.great.stops]
 montre8 = { rank = ["montre8", "montre8_rear"], engage_cc = 39, engaged = true }
-bourdon8 = { rank = ["bourdon8", "bourdon8_rear"], engage_cc = 37 }
-fluteharmonique8 = { rank = ["fluteharmonique8", "fluteharmonique8_rear"], engage_cc = 41 }
-gambe8 = { rank = ["gambe8", "gambe8_rear"], engage_cc = 43 }
-trompette8 = { rank = ["trompette8", "trompette8_rear"], engage_cc = 45 }
+bourdon8 = { rank = ["bourdon8", "bourdon8_rear"], engage_cc = 37, engaged = true }
+fluteharmonique8 = { rank = ["fluteharmonique8", "fluteharmonique8_rear"], engage_cc = 41, engaged = true }
+gambe8 = { rank = ["gambe8", "gambe8_rear"], engage_cc = 43, engaged = true }
+trompette8 = { rank = ["trompette8", "trompette8_rear"], engage_cc = 45, engaged = true }
 bombarde16 = { rank = ["bombarde16", "bombarde16_rear"], engage_cc = 47 }
 
 # Récit (Swell)
@@ -257,7 +257,7 @@ midi_channel = 2
 expression_cc = 12
 
 [divisions.swell.stops]
-diapason8 = { rank = ["diapason8", "diapason8_rear"], engage_cc = 50 }
+diapason8 = { rank = ["diapason8", "diapason8_rear"], engage_cc = 50, engaged = true }
 bassonhautbois8 = { rank = ["bassonhautbois8", "bassonhautbois8_rear"], engage_cc = 51 }
 fluteoctaviante4 = { rank = ["fluteoctaviante4", "fluteoctaviante4_rear"], engage_cc = 52 }
 nasard = { rank = ["nasard", "nasard_rear"], engage_cc = 53 }

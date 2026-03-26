@@ -176,6 +176,42 @@ a lighter tremulant setting.
 | Contrebasse 16' | String | Deep, sustained bass |
 | Grosse Flûte 8' | Flute | Warm pedal flute |
 
+## Known Issues
+
+### Stereo Channel Asymmetry
+
+The stereo WAV files in this sample set do **not** represent conventional
+left/right stereo. Instead, the two channels appear to represent two
+different microphone signals. Measured RMS levels for middle C (note 60):
+
+| Sample | Ch 0 (Left) | Ch 1 (Right) |
+|--------|-------------|--------------|
+| goDiff/Montre8 | 0.0738 | 0.0899 |
+| goDiff/Bourdon8 | 0.0280 | 0.0168 |
+| recDiff/Diapason8 | **0.0000** | 0.0725 |
+| recDiff/Bassonhautbois8 | **0.0000** | 0.0700 |
+| recDiff/Cornet | **0.0000** | 0.0755 |
+
+The **Récit (Swell) diffuse samples have a completely silent left channel**.
+All audio is in the right channel only. The Grand Orgue samples have audio
+in both channels but at different levels (not a simple L/R stereo image).
+
+This is likely intentional in the Hauptwerk format — the two channels may
+represent two microphone positions that Hauptwerk routes independently.
+When using these samples with our engine, the Récit stops will only produce
+sound on the "right" output channel of each routed speaker pair.
+
+**Workaround needed:** The engine should detect mono-in-stereo samples and
+duplicate the active channel, or provide a config option to select which
+sample channel to use for each rank.
+
+### Lowercase Filenames for Low Notes
+
+Pedal samples use **lowercase** note names for notes below C2 (e.g.,
+`024-c.wav`, `035-b.wav`) but uppercase for C2 and above (`036-C.wav`).
+The engine's sampler handles this with an automatic lowercase fallback —
+if the uppercase filename is not found, it retries with a lowercase version.
+
 ## Using with VirtualOrgan Engine
 
 Point the rank `sample_dir` at the stop directory under the desired microphone
