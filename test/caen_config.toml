@@ -154,79 +154,81 @@ filename_pattern = "{note:03d}-{name}.wav"
 # Routing — diffuse to front speakers, rear to back speakers
 # HDMI mapping: 1=FL 2=FR 3=RL 4=RR 5=FC 6=LFE 7=RLS 8=RRS
 
-# Default: diffuse perspective to front left + front right
+# Default: diffuse perspective to front speakers + subwoofer
+# FL(1), FR(2), FC(5), LFE(6)
 [routing.default]
 source = { perspective = 1 }
-output_channels = [1, 2]
+output_channels = [1, 2, 5, 6]
 
-# Rear ranks → rear speakers
+# Rear ranks → rear/surround speakers + subwoofer
+# RL(3), RR(4), LFE(6), RLS(7), RRS(8)
 [routing.montre8_rear]
 source = { rank = "montre8_rear" }
-output_channels = [3, 4]
+output_channels = [3, 4, 6, 7, 8]
 
 [routing.bourdon8_rear]
 source = { rank = "bourdon8_rear" }
-output_channels = [3, 4]
+output_channels = [3, 4, 6, 7 ,8]
 
 [routing.fluteharmonique8_rear]
 source = { rank = "fluteharmonique8_rear" }
-output_channels = [3, 4]
+output_channels = [3, 4, 6, 7 ,8]
 
 [routing.gambe8_rear]
 source = { rank = "gambe8_rear" }
-output_channels = [3, 4]
+output_channels = [3, 4, 6, 7 ,8]
 
 [routing.trompette8_rear]
 source = { rank = "trompette8_rear" }
-output_channels = [3, 4]
+output_channels = [3, 4, 6, 7 ,8]
 
 [routing.bombarde16_rear]
 source = { rank = "bombarde16_rear" }
-output_channels = [3, 4]
+output_channels = [3, 4, 6, 7 ,8]
 
 [routing.diapason8_rear]
 source = { rank = "diapason8_rear" }
-output_channels = [3, 4]
+output_channels = [3, 4, 6, 7 ,8]
 
 [routing.bassonhautbois8_rear]
 source = { rank = "bassonhautbois8_rear" }
-output_channels = [3, 4]
+output_channels = [3, 4, 6, 7 ,8]
 
 [routing.fluteoctaviante4_rear]
 source = { rank = "fluteoctaviante4_rear" }
-output_channels = [3, 4]
+output_channels = [3, 4, 6, 7 ,8]
 
 [routing.nasard_rear]
 source = { rank = "nasard_rear" }
-output_channels = [3, 4]
+output_channels = [3, 4, 6, 7 ,8]
 
 [routing.octavin2_rear]
 source = { rank = "octavin2_rear" }
-output_channels = [3, 4]
+output_channels = [3, 4, 6, 7 ,8]
 
 [routing.cornet_rear]
 source = { rank = "cornet_rear" }
-output_channels = [3, 4]
+output_channels = [3, 4, 6, 7 ,8]
 
 [routing.bourdon16_rear]
 source = { rank = "bourdon16_rear" }
-output_channels = [3, 4]
+output_channels = [3, 4, 6, 7 ,8]
 
 [routing.cordenuit8_rear]
 source = { rank = "cordenuit8_rear" }
-output_channels = [3, 4]
+output_channels = [3, 4, 6, 7 ,8]
 
 [routing.salicional8_rear]
 source = { rank = "salicional8_rear" }
-output_channels = [3, 4]
+output_channels = [3, 4, 6, 7 ,8]
 
 [routing.contrebasse16_rear]
 source = { rank = "contrebasse16_rear" }
-output_channels = [3, 4]
+output_channels = [3, 4, 6, 7 ,8]
 
 [routing.grosseflute8_rear]
 source = { rank = "grosseflute8_rear" }
-output_channels = [3, 4]
+output_channels = [3, 4, 6, 7 ,8]
 
 # MIDI device mapping
 [midi_devices.CH345]
