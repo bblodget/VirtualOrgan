@@ -70,7 +70,7 @@
 
 - [x] Config reload key (R in console, Shift+R in keyboard mode)
 - [x] Configurable release fade-out duration (release_fade_ms in [audio])
-- [ ] Handle mono-in-stereo samples (Caen Récit has silent left channel — duplicate active channel)
+- [x] Handle mono-in-stereo samples (source channel selection in routing)
 - [ ] Presets / registrations (saved stop combinations)
 - [ ] Wind simulation (subtle pitch/amplitude LFO)
 - [ ] Master limiter to prevent clipping
