@@ -183,18 +183,47 @@ pedal for volume control.
 [divisions.manual]
 midi_channel = 2
 expression_cc = 11
+
+[divisions.pedal]
+midi_channel = 1
+note_range = [24, 35]
 ```
 
-| Field           | Type | Default    | Description               |
-|-----------------|------|------------|---------------------------|
-| `midi_channel`  | int  | (required) | MIDI channel (1-16).      |
-| `expression_cc` | int  | (none)     | CC for expression pedal.  |
+| Field           | Type       | Default    | Description               |
+|-----------------|------------|------------|---------------------------|
+| `midi_channel`  | int        | (required) | MIDI channel (1-16).      |
+| `expression_cc` | int        | (none)     | CC for expression pedal.  |
+| `note_range`    | int array  | (none)     | MIDI note range [low, high]. |
 
 - `midi_channel` — notes on this channel trigger this
   division's engaged stops.
 - `expression_cc` — CC value 0-127 maps to gain 0.0-1.0.
+- `note_range` — restricts this division to a range of MIDI
+  notes. Use `[low, high]` for a range (inclusive) or `[note]`
+  for a single note. Notes outside the range are ignored.
+  This enables **keyboard splits** — multiple divisions on
+  the same MIDI channel responding to different note ranges.
 - If no `[divisions]` section is present, all ranks are
   triggered by any MIDI channel (legacy mode).
+
+### Keyboard Splits
+
+Multiple divisions can share the same `midi_channel` if they
+have non-overlapping `note_range` values. This is useful when
+a single keyboard needs to control different divisions in
+different ranges:
+
+```toml
+# Great division — upper range of keyboard
+[divisions.great]
+midi_channel = 1
+note_range = [36, 96]
+
+# Pedal division — lower range of same keyboard
+[divisions.pedal]
+midi_channel = 1
+note_range = [24, 35]
+```
 
 ### `[divisions.*.stops]` — Stop Definitions
 

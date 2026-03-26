@@ -91,9 +91,10 @@ channel = 1
 [midi_devices."Digital Piano"]
 channel = 1
 
-# Grand Orgue (Great)
+# Grand Orgue (Great) — notes 36+ on channel 1
 [divisions.great]
 midi_channel = 1
+note_range = [36, 96]
 expression_cc = 11
 
 [divisions.great.stops]
@@ -127,10 +128,11 @@ bourdon16 = { rank = "bourdon16", engage_cc = 60 }
 cordenuit8 = { rank = "cordenuit8", engage_cc = 61 }
 salicional8 = { rank = "salicional8", engage_cc = 62 }
 
-# Pédale
+# Pédale — low notes (21-35) on channel 1 from Digital Piano
 [divisions.pedal]
-midi_channel = 4
+midi_channel = 1
+note_range = [24, 35]
 
 [divisions.pedal.stops]
 contrebasse16 = { rank = "contrebasse16", engage_cc = 70, engaged = true }
-grosseflute8 = { rank = "grosseflute8", engage_cc = 71 }
+grosseflute8 = { rank = "grosseflute8", engage_cc = 71, engaged = true }

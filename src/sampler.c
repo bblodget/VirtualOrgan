@@ -12,6 +12,7 @@
  * GNU General Public License for more details.
  */
 
+#include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -21,6 +22,8 @@
 static const char *note_names[] = {
     "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"
 };
+
+
 
 /* Expand a filename pattern for a given MIDI note number.
  * Supported placeholders:
@@ -143,8 +146,17 @@ int sampler_load(SampleBank *bank, const char *dir, const char *pattern, size_t 
         char path[512];
         snprintf(path, sizeof(path), "%s/%s", dir, filename);
 
-        if (load_sample(bank, path, note, &total_bytes) == 0) {
-            /* loaded successfully */
+        if (load_sample(bank, path, note, &total_bytes) != 0) {
+            /* Try lowercase note name variant (some sample sets
+             * use lowercase for low notes, e.g. "024-c.wav") */
+            char filename_lc[256];
+            for (size_t i = 0; filename[i]; i++)
+                filename_lc[i] = tolower((unsigned char)filename[i]);
+            filename_lc[strlen(filename)] = '\0';
+            if (strcmp(filename_lc, filename) != 0) {
+                snprintf(path, sizeof(path), "%s/%s", dir, filename_lc);
+                load_sample(bank, path, note, &total_bytes);
+            }
         }
     }
 
