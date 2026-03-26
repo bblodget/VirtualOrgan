@@ -53,9 +53,10 @@
 
 - [x] Per-rank routing overrides
 - [x] Per-note-range routing (bass splits)
-- [ ] Multi-perspective sample loading (multiple sample_dir per rank, or separate directories as perspectives)
+- [ ] Multi-perspective sample loading from separate directories (e.g. goDiff + goRear as two perspectives)
 - [ ] Duration-dependent release samples (load separate rel00160/rel00500/rel99999 WAVs)
 - [x] Keyboard splits (note_range on divisions — same MIDI channel, different stops per range)
+- [ ] Note range remapping (map a keyboard range to different MIDI note range, e.g. split keyboard plays same notes)
 - [ ] Test at Dad's house with Yamaha RX-A8A (8-channel HDMI)
 
 ## Phase 6 — Web Interface
@@ -68,6 +69,8 @@
 ## Phase 7 — Polish
 
 - [x] Config reload key (R in console, Shift+R in keyboard mode)
+- [ ] Configurable release fade-out duration (currently hardcoded 250ms)
+- [ ] Handle mono-in-stereo samples (Caen Récit has silent left channel — duplicate active channel)
 - [ ] Presets / registrations (saved stop combinations)
 - [ ] Wind simulation (subtle pitch/amplitude LFO)
 - [ ] Master limiter to prevent clipping
