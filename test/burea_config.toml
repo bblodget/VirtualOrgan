@@ -3,7 +3,7 @@ sample_rate = 48000
 buffer_size = 1024
 jack_client_name = "organ"
 num_outputs = 2
-release_fade_ms = 1000
+release_fade_ms = 100
 
 # Ranks — pure sample definitions
 [ranks.gedackt8]
