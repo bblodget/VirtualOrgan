@@ -79,10 +79,154 @@ filename_pattern = "{note:03d}-{name}.wav"
 sample_dir = "samples/Caen_Demo/OrganInstallationPackages/001704/pipe/pedDiff/GrosseFlute8"
 filename_pattern = "{note:03d}-{name}.wav"
 
-# Simple stereo routing
+# Grand Orgue (Great) — goRear
+[ranks.montre8_rear]
+sample_dir = "samples/Caen_Demo/OrganInstallationPackages/001704/pipe/goRear/Montre8"
+filename_pattern = "{note:03d}-{name}.wav"
+
+[ranks.bourdon8_rear]
+sample_dir = "samples/Caen_Demo/OrganInstallationPackages/001704/pipe/goRear/Bourdon8"
+filename_pattern = "{note:03d}-{name}.wav"
+
+[ranks.fluteharmonique8_rear]
+sample_dir = "samples/Caen_Demo/OrganInstallationPackages/001704/pipe/goRear/FluteHarmonique8"
+filename_pattern = "{note:03d}-{name}.wav"
+
+[ranks.gambe8_rear]
+sample_dir = "samples/Caen_Demo/OrganInstallationPackages/001704/pipe/goRear/Gambe8"
+filename_pattern = "{note:03d}-{name}.wav"
+
+[ranks.trompette8_rear]
+sample_dir = "samples/Caen_Demo/OrganInstallationPackages/001704/pipe/goRear/Trompette8"
+filename_pattern = "{note:03d}-{name}.wav"
+
+[ranks.bombarde16_rear]
+sample_dir = "samples/Caen_Demo/OrganInstallationPackages/001704/pipe/goRear/Bombarde16"
+filename_pattern = "{note:03d}-{name}.wav"
+
+# Récit (Swell) — recRear
+[ranks.diapason8_rear]
+sample_dir = "samples/Caen_Demo/OrganInstallationPackages/001704/pipe/recRear/Diapason8"
+filename_pattern = "{note:03d}-{name}.wav"
+
+[ranks.bassonhautbois8_rear]
+sample_dir = "samples/Caen_Demo/OrganInstallationPackages/001704/pipe/recRear/BassonHautbois8"
+filename_pattern = "{note:03d}-{name}.wav"
+
+[ranks.fluteoctaviante4_rear]
+sample_dir = "samples/Caen_Demo/OrganInstallationPackages/001704/pipe/recRear/Fluteoctaviante4"
+filename_pattern = "{note:03d}-{name}.wav"
+
+[ranks.nasard_rear]
+sample_dir = "samples/Caen_Demo/OrganInstallationPackages/001704/pipe/recRear/Nasard"
+filename_pattern = "{note:03d}-{name}.wav"
+
+[ranks.octavin2_rear]
+sample_dir = "samples/Caen_Demo/OrganInstallationPackages/001704/pipe/recRear/Octavin2"
+filename_pattern = "{note:03d}-{name}.wav"
+
+[ranks.cornet_rear]
+sample_dir = "samples/Caen_Demo/OrganInstallationPackages/001704/pipe/recRear/Cornet"
+filename_pattern = "{note:03d}-{name}.wav"
+
+# Positif (Choir) — posRear
+[ranks.bourdon16_rear]
+sample_dir = "samples/Caen_Demo/OrganInstallationPackages/001704/pipe/posRear/Bourdon16"
+filename_pattern = "{note:03d}-{name}.wav"
+
+[ranks.cordenuit8_rear]
+sample_dir = "samples/Caen_Demo/OrganInstallationPackages/001704/pipe/posRear/CorDeNuit8"
+filename_pattern = "{note:03d}-{name}.wav"
+
+[ranks.salicional8_rear]
+sample_dir = "samples/Caen_Demo/OrganInstallationPackages/001704/pipe/posRear/Salicional8"
+filename_pattern = "{note:03d}-{name}.wav"
+
+# Pédale — pedRear
+[ranks.contrebasse16_rear]
+sample_dir = "samples/Caen_Demo/OrganInstallationPackages/001704/pipe/pedRear/Contrebasse16"
+filename_pattern = "{note:03d}-{name}.wav"
+
+[ranks.grosseflute8_rear]
+sample_dir = "samples/Caen_Demo/OrganInstallationPackages/001704/pipe/pedRear/GrosseFlute8"
+filename_pattern = "{note:03d}-{name}.wav"
+
+# Routing — diffuse to front speakers, rear to back speakers
+# HDMI mapping: 1=FL 2=FR 3=RL 4=RR 5=FC 6=LFE 7=RLS 8=RRS
+
+# Default: diffuse perspective to front left + front right
 [routing.default]
 source = { perspective = 1 }
-output_channels = [6]
+output_channels = [1, 2]
+
+# Rear ranks → rear speakers
+[routing.montre8_rear]
+source = { rank = "montre8_rear" }
+output_channels = [3, 4]
+
+[routing.bourdon8_rear]
+source = { rank = "bourdon8_rear" }
+output_channels = [3, 4]
+
+[routing.fluteharmonique8_rear]
+source = { rank = "fluteharmonique8_rear" }
+output_channels = [3, 4]
+
+[routing.gambe8_rear]
+source = { rank = "gambe8_rear" }
+output_channels = [3, 4]
+
+[routing.trompette8_rear]
+source = { rank = "trompette8_rear" }
+output_channels = [3, 4]
+
+[routing.bombarde16_rear]
+source = { rank = "bombarde16_rear" }
+output_channels = [3, 4]
+
+[routing.diapason8_rear]
+source = { rank = "diapason8_rear" }
+output_channels = [3, 4]
+
+[routing.bassonhautbois8_rear]
+source = { rank = "bassonhautbois8_rear" }
+output_channels = [3, 4]
+
+[routing.fluteoctaviante4_rear]
+source = { rank = "fluteoctaviante4_rear" }
+output_channels = [3, 4]
+
+[routing.nasard_rear]
+source = { rank = "nasard_rear" }
+output_channels = [3, 4]
+
+[routing.octavin2_rear]
+source = { rank = "octavin2_rear" }
+output_channels = [3, 4]
+
+[routing.cornet_rear]
+source = { rank = "cornet_rear" }
+output_channels = [3, 4]
+
+[routing.bourdon16_rear]
+source = { rank = "bourdon16_rear" }
+output_channels = [3, 4]
+
+[routing.cordenuit8_rear]
+source = { rank = "cordenuit8_rear" }
+output_channels = [3, 4]
+
+[routing.salicional8_rear]
+source = { rank = "salicional8_rear" }
+output_channels = [3, 4]
+
+[routing.contrebasse16_rear]
+source = { rank = "contrebasse16_rear" }
+output_channels = [3, 4]
+
+[routing.grosseflute8_rear]
+source = { rank = "grosseflute8_rear" }
+output_channels = [3, 4]
 
 # MIDI device mapping
 [midi_devices.CH345]
@@ -98,12 +242,12 @@ note_range = [36, 96]
 expression_cc = 11
 
 [divisions.great.stops]
-montre8 = { rank = "montre8", engage_cc = 39, engaged = true }
-bourdon8 = { rank = "bourdon8", engage_cc = 37 }
-fluteharmonique8 = { rank = "fluteharmonique8", engage_cc = 41 }
-gambe8 = { rank = "gambe8", engage_cc = 43 }
-trompette8 = { rank = "trompette8", engage_cc = 45 }
-bombarde16 = { rank = "bombarde16", engage_cc = 47 }
+montre8 = { rank = ["montre8", "montre8_rear"], engage_cc = 39, engaged = true }
+bourdon8 = { rank = ["bourdon8", "bourdon8_rear"], engage_cc = 37 }
+fluteharmonique8 = { rank = ["fluteharmonique8", "fluteharmonique8_rear"], engage_cc = 41 }
+gambe8 = { rank = ["gambe8", "gambe8_rear"], engage_cc = 43 }
+trompette8 = { rank = ["trompette8", "trompette8_rear"], engage_cc = 45 }
+bombarde16 = { rank = ["bombarde16", "bombarde16_rear"], engage_cc = 47 }
 
 # Récit (Swell)
 [divisions.swell]
@@ -111,12 +255,12 @@ midi_channel = 2
 expression_cc = 12
 
 [divisions.swell.stops]
-diapason8 = { rank = "diapason8", engage_cc = 50 }
-bassonhautbois8 = { rank = "bassonhautbois8", engage_cc = 51 }
-fluteoctaviante4 = { rank = "fluteoctaviante4", engage_cc = 52 }
-nasard = { rank = "nasard", engage_cc = 53 }
-octavin2 = { rank = "octavin2", engage_cc = 54 }
-cornet = { rank = "cornet", engage_cc = 55 }
+diapason8 = { rank = ["diapason8", "diapason8_rear"], engage_cc = 50 }
+bassonhautbois8 = { rank = ["bassonhautbois8", "bassonhautbois8_rear"], engage_cc = 51 }
+fluteoctaviante4 = { rank = ["fluteoctaviante4", "fluteoctaviante4_rear"], engage_cc = 52 }
+nasard = { rank = ["nasard", "nasard_rear"], engage_cc = 53 }
+octavin2 = { rank = ["octavin2", "octavin2_rear"], engage_cc = 54 }
+cornet = { rank = ["cornet", "cornet_rear"], engage_cc = 55 }
 
 # Positif (Choir)
 [divisions.choir]
@@ -124,9 +268,9 @@ midi_channel = 3
 expression_cc = 13
 
 [divisions.choir.stops]
-bourdon16 = { rank = "bourdon16", engage_cc = 60 }
-cordenuit8 = { rank = "cordenuit8", engage_cc = 61 }
-salicional8 = { rank = "salicional8", engage_cc = 62 }
+bourdon16 = { rank = ["bourdon16", "bourdon16_rear"], engage_cc = 60 }
+cordenuit8 = { rank = ["cordenuit8", "cordenuit8_rear"], engage_cc = 61 }
+salicional8 = { rank = ["salicional8", "salicional8_rear"], engage_cc = 62 }
 
 # Pédale — low notes (21-35) on channel 1 from Digital Piano
 [divisions.pedal]
@@ -134,5 +278,5 @@ midi_channel = 1
 note_range = [24, 35]
 
 [divisions.pedal.stops]
-contrebasse16 = { rank = "contrebasse16", engage_cc = 70, engaged = true }
-grosseflute8 = { rank = "grosseflute8", engage_cc = 71, engaged = true }
+contrebasse16 = { rank = ["contrebasse16", "contrebasse16_rear"], engage_cc = 70, engaged = true }
+grosseflute8 = { rank = ["grosseflute8", "grosseflute8_rear"], engage_cc = 71, engaged = true }

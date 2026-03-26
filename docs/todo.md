@@ -53,7 +53,7 @@
 
 - [x] Per-rank routing overrides
 - [x] Per-note-range routing (bass splits)
-- [ ] Multi-perspective sample loading (multiple sample_dir per rank)
+- [ ] Multi-perspective sample loading (multiple sample_dir per rank, or separate directories as perspectives)
 - [ ] Duration-dependent release samples (load separate rel00160/rel00500/rel99999 WAVs)
 - [x] Keyboard splits (note_range on divisions — same MIDI channel, different stops per range)
 - [ ] Test at Dad's house with Yamaha RX-A8A (8-channel HDMI)
