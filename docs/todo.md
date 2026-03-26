@@ -53,7 +53,7 @@
 
 - [x] Per-rank routing overrides
 - [x] Per-note-range routing (bass splits)
-- [ ] Multi-perspective sample loading from separate directories (e.g. goDiff + goRear as two perspectives)
+- [x] Multi-perspective sample loading from separate directories (sample_dir array)
 - [ ] Duration-dependent release samples (load separate rel00160/rel00500/rel99999 WAVs)
 - [x] Keyboard splits (note_range on divisions — same MIDI channel, different stops per range)
 - [ ] Note range remapping (map a keyboard range to different MIDI note range, e.g. split keyboard plays same notes)
