@@ -62,6 +62,9 @@ Voice *voice_pool_note_on(VoicePool *pool, uint8_t note, uint8_t velocity,
 /* Deactivate all voices playing the given note. */
 void voice_pool_note_off(VoicePool *pool, uint8_t note);
 
+/* Set the release fade-out duration. Call after config is loaded. */
+void voice_set_release_fade(int ms, int sample_rate);
+
 /* Render nframes of audio from a single voice into output buffers (additive).
  * bufs is an array of num_channels output buffers.
  * Mono samples are duplicated to all channels.

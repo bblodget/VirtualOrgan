@@ -98,6 +98,7 @@ int main(int argc, char **argv)
     /* Initialize voice pool and ring buffer */
     VoicePool voice_pool;
     voice_pool_init(&voice_pool);
+    voice_set_release_fade(config.release_fade_ms, config.sample_rate);
 
     RingBuffer ring_buffer;
     ring_buffer_init(&ring_buffer);

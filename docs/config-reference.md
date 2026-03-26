@@ -21,6 +21,7 @@ num_outputs = 2            # number of JACK output ports (default 2)
 | `buffer_size`      | int    | 128     | Expected buffer size.          |
 | `jack_client_name` | string | "organ" | JACK client name.              |
 | `num_outputs`      | int    | 2       | Number of JACK output ports.   |
+| `release_fade_ms`  | int    | 250     | Release fade-out duration (ms).|
 
 - `sample_rate` and `buffer_size` are informational — JACK
   determines the actual values.

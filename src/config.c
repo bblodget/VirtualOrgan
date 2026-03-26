@@ -26,6 +26,7 @@ int config_load(OrganConfig *cfg, const char *path)
     cfg->sample_rate = 48000;
     cfg->buffer_size = 128;
     cfg->num_outputs = 2;
+    cfg->release_fade_ms = 250;
     strncpy(cfg->jack_client_name, "organ", sizeof(cfg->jack_client_name) - 1);
 
     FILE *fp = fopen(path, "r");
@@ -56,6 +57,9 @@ int config_load(OrganConfig *cfg, const char *path)
 
         val = toml_int_in(audio, "num_outputs");
         if (val.ok) cfg->num_outputs = (int)val.u.i;
+
+        val = toml_int_in(audio, "release_fade_ms");
+        if (val.ok) cfg->release_fade_ms = (int)val.u.i;
 
         val = toml_string_in(audio, "jack_client_name");
         if (val.ok) {
@@ -393,6 +397,7 @@ int config_reload(OrganConfig *cfg, const char *path)
 
     /* Copy safe-to-change fields */
     cfg->num_outputs = new_cfg.num_outputs;
+    cfg->release_fade_ms = new_cfg.release_fade_ms;
 
     cfg->num_divisions = new_cfg.num_divisions;
     for (int d = 0; d < new_cfg.num_divisions && d < MAX_DIVISIONS; d++)

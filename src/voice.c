@@ -12,6 +12,7 @@
  * GNU General Public License for more details.
  */
 
+#include <stdio.h>
 #include <string.h>
 #include "voice.h"
 
@@ -87,15 +88,8 @@ static inline void render_sustain(Voice *voice, const Sample *s,
         voice->position = s->loop_start;
 }
 
-/* Begin transition to release tail.
- * Crossfade from the current sustain position into a phase-aligned
- * position in the release tail. Since loop_start and loop_end are at
- * the same waveform phase, our offset within the loop tells us the
- * equivalent offset into the release:
- *   release_start = loop_end + (current_pos - loop_start)
- * If no loop points, apply a short fade-out from current position. */
-/* Fade-out duration: ~250ms at 48kHz */
-#define RELEASE_FADE_FRAMES 12000
+/* Release fade-out duration in frames (set by voice_set_release_fade) */
+static int release_fade_frames = 12000;  /* default ~250ms at 48kHz */
 
 static inline void begin_release(Voice *voice)
 {
@@ -142,7 +136,7 @@ bool voice_render(Voice *voice, float **bufs, int num_channels, int nframes,
 
         case VOICE_RELEASE: {
             /* Fade out from current position, continuing loop */
-            float fade = 1.0f - (float)voice->release_pos / RELEASE_FADE_FRAMES;
+            float fade = 1.0f - (float)voice->release_pos / release_fade_frames;
             if (fade <= 0.0f) {
                 voice->active = false;
                 return false;
@@ -167,4 +161,11 @@ bool voice_render(Voice *voice, float **bufs, int num_channels, int nframes,
     }
 
     return true;
+}
+
+void voice_set_release_fade(int ms, int sample_rate)
+{
+    release_fade_frames = ms * sample_rate / 1000;
+    if (release_fade_frames < 1) release_fade_frames = 1;
+    printf("voice: release fade = %dms (%d frames)\n", ms, release_fade_frames);
 }

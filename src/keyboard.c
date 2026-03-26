@@ -17,6 +17,7 @@
 #include <SDL2/SDL.h>
 #include "keyboard.h"
 #include "mixer.h"
+#include "voice.h"
 
 /* QWERTY piano key mapping: scancode → semitone offset from C.
  * -1 means not a note key. */
@@ -114,6 +115,7 @@ static void do_reload(void)
     if (config_reload(organ_config, config_path) == 0) {
         if (active_division >= organ_config->num_divisions)
             active_division = 0;
+        voice_set_release_fade(organ_config->release_fade_ms, organ_config->sample_rate);
         printf("Config reloaded from %s\n", config_path);
         print_help();
     } else {
