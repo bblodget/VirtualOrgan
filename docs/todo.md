@@ -69,7 +69,7 @@
 ## Phase 7 — Polish
 
 - [x] Config reload key (R in console, Shift+R in keyboard mode)
-- [ ] Configurable release fade-out duration (currently hardcoded 250ms)
+- [x] Configurable release fade-out duration (release_fade_ms in [audio])
 - [ ] Handle mono-in-stereo samples (Caen Récit has silent left channel — duplicate active channel)
 - [ ] Presets / registrations (saved stop combinations)
 - [ ] Wind simulation (subtle pitch/amplitude LFO)
