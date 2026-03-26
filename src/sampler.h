@@ -35,12 +35,14 @@ typedef struct {
     int     count;                    /* number of loaded samples */
 } SampleBank;
 
-/* Load all WAV files from directory into bank.
+/* Load all WAV files from one or more directories into bank.
+ * Multiple directories are loaded as additional channels (perspectives).
  * Pattern uses {note} for MIDI note number and {name} for note name.
  * Examples: "{note:03d}.wav", "{note:03d}-{name}.wav"
  * If bytes_out is non-NULL, adds the total bytes loaded to *bytes_out.
  * Returns number of samples loaded, or -1 on error. */
-int sampler_load(SampleBank *bank, const char *dir, const char *pattern, size_t *bytes_out);
+int sampler_load(SampleBank *bank, const char **dirs, int num_dirs,
+                 const char *pattern, size_t *bytes_out);
 
 /* Free all loaded samples. */
 void sampler_free(SampleBank *bank);

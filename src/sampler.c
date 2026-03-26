@@ -134,34 +134,96 @@ static int load_sample(SampleBank *bank, const char *path, int note, size_t *byt
     return 0;
 }
 
-int sampler_load(SampleBank *bank, const char *dir, const char *pattern, size_t *bytes_out)
+/* Try to load a sample from a directory, with lowercase fallback */
+static int try_load_sample(SampleBank *bank, const char *dir,
+                           const char *pattern, int note, size_t *bytes_out)
+{
+    char filename[256];
+    expand_pattern(pattern, note, filename, sizeof(filename));
+
+    char path[512];
+    snprintf(path, sizeof(path), "%s/%s", dir, filename);
+
+    if (load_sample(bank, path, note, bytes_out) == 0)
+        return 0;
+
+    /* Try lowercase variant (e.g. "024-c.wav") */
+    char filename_lc[256];
+    for (size_t i = 0; filename[i]; i++)
+        filename_lc[i] = tolower((unsigned char)filename[i]);
+    filename_lc[strlen(filename)] = '\0';
+    if (strcmp(filename_lc, filename) != 0) {
+        snprintf(path, sizeof(path), "%s/%s", dir, filename_lc);
+        return load_sample(bank, path, note, bytes_out);
+    }
+    return -1;
+}
+
+/* Merge channels from src sample into dst sample.
+ * Appends src's channels after dst's existing channels. */
+static int merge_sample_channels(Sample *dst, const Sample *src)
+{
+    if (src->frames != dst->frames) {
+        /* Use the shorter frame count */
+        if (src->frames < dst->frames)
+            dst->frames = src->frames;
+    }
+
+    int new_total = dst->channels + src->channels;
+    float **new_data = realloc(dst->data, new_total * sizeof(float *));
+    if (!new_data) return -1;
+    dst->data = new_data;
+
+    for (int ch = 0; ch < src->channels; ch++) {
+        dst->data[dst->channels + ch] = src->data[ch];
+        src->data[ch] = NULL;  /* prevent double-free */
+    }
+    dst->channels = new_total;
+    return 0;
+}
+
+int sampler_load(SampleBank *bank, const char **dirs, int num_dirs,
+                 const char *pattern, size_t *bytes_out)
 {
     memset(bank, 0, sizeof(*bank));
     size_t total_bytes = 0;
 
-    for (int note = 0; note < MAX_MIDI_NOTES; note++) {
-        char filename[256];
-        expand_pattern(pattern, note, filename, sizeof(filename));
+    if (num_dirs < 1) return 0;
 
-        char path[512];
-        snprintf(path, sizeof(path), "%s/%s", dir, filename);
-
-        if (load_sample(bank, path, note, &total_bytes) != 0) {
-            /* Try lowercase note name variant (some sample sets
-             * use lowercase for low notes, e.g. "024-c.wav") */
-            char filename_lc[256];
-            for (size_t i = 0; filename[i]; i++)
-                filename_lc[i] = tolower((unsigned char)filename[i]);
-            filename_lc[strlen(filename)] = '\0';
-            if (strcmp(filename_lc, filename) != 0) {
-                snprintf(path, sizeof(path), "%s/%s", dir, filename_lc);
-                load_sample(bank, path, note, &total_bytes);
-            }
-        }
-    }
+    /* Load first directory normally */
+    for (int note = 0; note < MAX_MIDI_NOTES; note++)
+        try_load_sample(bank, dirs[0], pattern, note, &total_bytes);
 
     printf("sampler: loaded %d samples from '%s' (%.1f MB)\n",
-           bank->count, dir, total_bytes / (1024.0 * 1024.0));
+           bank->count, dirs[0], total_bytes / (1024.0 * 1024.0));
+
+    /* Load additional directories and merge channels */
+    for (int d = 1; d < num_dirs; d++) {
+        SampleBank extra;
+        memset(&extra, 0, sizeof(extra));
+        size_t extra_bytes = 0;
+
+        for (int note = 0; note < MAX_MIDI_NOTES; note++)
+            try_load_sample(&extra, dirs[d], pattern, note, &extra_bytes);
+
+        printf("sampler: loaded %d samples from '%s' (%.1f MB)\n",
+               extra.count, dirs[d], extra_bytes / (1024.0 * 1024.0));
+
+        /* Merge extra channels into the primary bank */
+        for (int note = 0; note < MAX_MIDI_NOTES; note++) {
+            if (bank->samples[note].data && extra.samples[note].data) {
+                merge_sample_channels(&bank->samples[note], &extra.samples[note]);
+            }
+            /* Free any unmerged extra data */
+            if (extra.samples[note].data) {
+                for (int ch = 0; ch < extra.samples[note].channels; ch++)
+                    free(extra.samples[note].data[ch]);
+                free(extra.samples[note].data);
+            }
+        }
+
+        total_bytes += extra_bytes;
+    }
 
     if (bytes_out)
         *bytes_out += total_bytes;

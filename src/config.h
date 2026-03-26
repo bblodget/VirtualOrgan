@@ -25,11 +25,14 @@
 #define MAX_STOPS_PER_DIV  32
 #define MAX_COUPLERS       16
 
+#define MAX_SAMPLE_DIRS 8
+
 typedef struct {
-    char     sample_dir[MAX_PATH_LEN];
+    char     sample_dirs[MAX_SAMPLE_DIRS][MAX_PATH_LEN];
+    int      num_sample_dirs;   /* number of sample directories (1 = single perspective) */
     char     filename_pattern[MAX_PATH_LEN];  /* e.g. "{note:03d}.wav" or "{note:03d}-{name}.wav" */
     char     name[64];
-    int      num_perspectives;  /* default 1; channels_per_perspective = sample_channels / num_perspectives */
+    int      num_perspectives;  /* = num_sample_dirs */
 } RankConfig;
 
 #define MAX_ROUTES 32

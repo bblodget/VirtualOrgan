@@ -82,11 +82,30 @@ int config_load(OrganConfig *cfg, const char *path)
 
             toml_datum_t val;
 
+            /* sample_dir: string or array of strings */
+            rc->num_sample_dirs = 0;
             val = toml_string_in(rank, "sample_dir");
             if (val.ok) {
-                strncpy(rc->sample_dir, val.u.s, sizeof(rc->sample_dir) - 1);
+                /* Single directory */
+                strncpy(rc->sample_dirs[0], val.u.s, MAX_PATH_LEN - 1);
+                rc->num_sample_dirs = 1;
                 free(val.u.s);
+            } else {
+                /* Array of directories */
+                toml_array_t *dirs = toml_array_in(rank, "sample_dir");
+                if (dirs) {
+                    int nd = toml_array_nelem(dirs);
+                    for (int di = 0; di < nd && di < MAX_SAMPLE_DIRS; di++) {
+                        toml_datum_t dv = toml_string_at(dirs, di);
+                        if (dv.ok) {
+                            strncpy(rc->sample_dirs[rc->num_sample_dirs], dv.u.s, MAX_PATH_LEN - 1);
+                            rc->num_sample_dirs++;
+                            free(dv.u.s);
+                        }
+                    }
+                }
             }
+            rc->num_perspectives = rc->num_sample_dirs > 0 ? rc->num_sample_dirs : 1;
 
             val = toml_string_in(rank, "filename_pattern");
             if (val.ok) {
@@ -95,10 +114,6 @@ int config_load(OrganConfig *cfg, const char *path)
             } else {
                 strncpy(rc->filename_pattern, "{note:03d}.wav", sizeof(rc->filename_pattern) - 1);
             }
-
-            rc->num_perspectives = 1;  /* default */
-            val = toml_int_in(rank, "num_perspectives");
-            if (val.ok) rc->num_perspectives = (int)val.u.i;
 
             cfg->num_ranks++;
         }
@@ -430,10 +445,11 @@ void config_print(const OrganConfig *cfg)
     for (int i = 0; i < cfg->num_ranks; i++) {
         const RankConfig *rc = &cfg->ranks[i];
         printf("    [%s]\n", rc->name);
-        printf("      sample_dir: %s\n", rc->sample_dir);
+        for (int d = 0; d < rc->num_sample_dirs; d++)
+            printf("      sample_dir[%d]: %s\n", d + 1, rc->sample_dirs[d]);
         printf("      filename_pattern: %s\n", rc->filename_pattern);
         if (rc->num_perspectives > 1)
-            printf("      num_perspectives: %d\n", rc->num_perspectives);
+            printf("      perspectives: %d\n", rc->num_perspectives);
     }
 
     if (cfg->num_divisions > 0) {

@@ -82,7 +82,10 @@ int main(int argc, char **argv)
     int total_samples = 0;
     for (int i = 0; i < config.num_ranks; i++) {
         printf("\nLoading samples for rank '%s'...\n", config.ranks[i].name);
-        int n = sampler_load(&banks[i], config.ranks[i].sample_dir,
+        const char *dirs[MAX_SAMPLE_DIRS];
+        for (int d = 0; d < config.ranks[i].num_sample_dirs; d++)
+            dirs[d] = config.ranks[i].sample_dirs[d];
+        int n = sampler_load(&banks[i], dirs, config.ranks[i].num_sample_dirs,
                              config.ranks[i].filename_pattern, &total_bytes);
         if (n < 0) {
             for (int j = 0; j < i; j++)

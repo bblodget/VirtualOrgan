@@ -23,13 +23,13 @@ static jack_port_t   *ports[MAX_OUTPUT_CHANNELS];
 static int            num_ports;
 static JackEngineCtx *engine_ctx;
 
-/* Apply a routing entry: set output channels and sample channel offset. */
+/* Apply a routing entry: set output channels and sample channel offset.
+ * cpp = channels per perspective (from the sample's total channels / num_perspectives). */
 static void apply_route(const RoutingConfig *rc,
-                        int *out_channels, int *num_out, int *src_offset)
+                        int *out_channels, int *num_out, int *src_offset,
+                        int cpp)
 {
     int persp = rc->perspective;  /* 1-indexed, only used for perspective routes */
-    int cpp = 2;  /* assume stereo perspectives */
-
     *src_offset = (persp - 1) * cpp;
     *num_out = rc->num_output_channels;
     for (int j = 0; j < rc->num_output_channels; j++)
@@ -43,55 +43,25 @@ static inline bool note_matches(const RoutingConfig *rc, int note)
     return note >= rc->note_range[0] && note <= rc->note_range[1];
 }
 
-/* Look up output routing for a given rank, division, and note.
- * Precedence (most to least specific):
- *   rank + note_range > rank > division + note_range > division > perspective
- * Returns default stereo routing (channels 0,1) if no routes configured. */
-static void get_routing(const OrganConfig *cfg, int rank_index, int div_index,
-                        int note,
-                        int *out_channels, int *num_out, int *src_offset)
+/* Create a voice with the given routing. */
+static void create_voice(int div_idx, uint8_t note, uint8_t velocity,
+                         const Sample *sample, const RoutingConfig *rc, int cpp)
 {
-    const RoutingConfig *best = NULL;
-    int best_priority = -1;  /* higher = more specific */
-
-    for (int r = 0; r < cfg->num_routes; r++) {
-        const RoutingConfig *rc = &cfg->routes[r];
-        int priority = -1;
-
-        switch (rc->source_type) {
-        case ROUTE_PERSPECTIVE:
-            if (note_matches(rc, note))
-                priority = 0;
-            break;
-        case ROUTE_DIVISION:
-            if (div_index >= 0 && rc->division_index == div_index && note_matches(rc, note))
-                priority = rc->has_note_range ? 2 : 1;
-            break;
-        case ROUTE_RANK:
-            if (rc->rank_index == rank_index && note_matches(rc, note))
-                priority = rc->has_note_range ? 4 : 3;
-            break;
-        }
-
-        if (priority > best_priority) {
-            best = rc;
-            best_priority = priority;
-        }
-    }
-
-    if (best) {
-        apply_route(best, out_channels, num_out, src_offset);
-    } else {
-        /* No routing configured: default stereo to channels 0,1 */
-        *src_offset = 0;
-        *num_out = 2;
-        if (num_ports < 2) *num_out = num_ports;
-        out_channels[0] = 0;
-        if (*num_out > 1) out_channels[1] = 1;
-    }
+    int out_ch[MAX_OUTPUT_CHANNELS];
+    int num_out, src_offset;
+    apply_route(rc, out_ch, &num_out, &src_offset, cpp);
+    voice_pool_note_on(engine_ctx->voice_pool, note, velocity,
+                       sample, div_idx, out_ch, num_out, src_offset);
 }
 
-/* Helper: trigger engaged stops for a division, with routing */
+/* Helper: trigger engaged stops for a division, with routing.
+ *
+ * Routing rules:
+ * 1. If a rank or division route matches (with optional perspective),
+ *    use it — most specific wins (rank > division). One voice per match.
+ * 2. If only perspective routes match, create a voice for each
+ *    perspective route (multi-perspective support).
+ * 3. If no routes match, default stereo. */
 static void trigger_division(int div_idx, uint8_t note, uint8_t velocity)
 {
     OrganConfig *cfg = engine_ctx->config;
@@ -107,12 +77,51 @@ static void trigger_division(int div_idx, uint8_t note, uint8_t velocity)
             if (!sample->data)
                 continue;
 
-            int out_ch[MAX_OUTPUT_CHANNELS];
-            int num_out, src_offset;
-            get_routing(cfg, rank_idx, div_idx, note, out_ch, &num_out, &src_offset);
+            int num_persp = cfg->ranks[rank_idx].num_perspectives;
+            int cpp = (sample->channels > 0 && num_persp > 0)
+                      ? sample->channels / num_persp : 2;
 
-            voice_pool_note_on(engine_ctx->voice_pool, note, velocity,
-                               sample, div_idx, out_ch, num_out, src_offset);
+            /* Pass 1: look for rank or division routes (most specific) */
+            bool specific_found = false;
+            for (int rt = 0; rt < cfg->num_routes; rt++) {
+                const RoutingConfig *rc = &cfg->routes[rt];
+                bool matches = false;
+
+                if (rc->source_type == ROUTE_RANK &&
+                    rc->rank_index == rank_idx && note_matches(rc, note))
+                    matches = true;
+                else if (rc->source_type == ROUTE_DIVISION &&
+                         div_idx >= 0 && rc->division_index == div_idx &&
+                         note_matches(rc, note))
+                    matches = true;
+
+                if (matches) {
+                    create_voice(div_idx, note, velocity, sample, rc, cpp);
+                    specific_found = true;
+                }
+            }
+
+            if (specific_found) continue;
+
+            /* Pass 2: no specific routes — use perspective routes */
+            bool persp_found = false;
+            for (int rt = 0; rt < cfg->num_routes; rt++) {
+                const RoutingConfig *rc = &cfg->routes[rt];
+                if (rc->source_type == ROUTE_PERSPECTIVE && note_matches(rc, note)) {
+                    create_voice(div_idx, note, velocity, sample, rc, cpp);
+                    persp_found = true;
+                }
+            }
+
+            if (persp_found) continue;
+
+            /* Pass 3: no routes at all — default stereo */
+            {
+                int out_ch[] = {0, 1};
+                int n = (num_ports < 2) ? num_ports : 2;
+                voice_pool_note_on(engine_ctx->voice_pool, note, velocity,
+                                   sample, div_idx, out_ch, n, 0);
+            }
         }
     }
 }
