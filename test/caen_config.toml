@@ -6,6 +6,9 @@ num_outputs = 8
 release_fade_ms = 150
 master_gain = 0.50
 
+[web]
+port = 8080
+
 # Caen St. Étienne, Cavaillé-Coll (Demo)
 # Each rank loads diffuse + rear perspectives from separate directories
 
