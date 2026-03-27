@@ -1,11 +1,12 @@
 CC      = gcc
 CFLAGS  = -Wall -Wextra -O2 -std=c11 -pthread -D_DEFAULT_SOURCE
 CFLAGS += $(shell pkg-config --cflags jack sndfile alsa sdl2)
-LDFLAGS = $(shell pkg-config --libs jack sndfile alsa sdl2) -lm -lpthread
+LDFLAGS = $(shell pkg-config --libs jack sndfile alsa sdl2) -lm -lpthread -lmicrohttpd
 
 # Source files
 SRC     = src/main.c src/config.c src/sampler.c src/voice.c src/mixer.c \
-          src/midi.c src/keyboard.c src/console.c src/jack_engine.c src/ring_buffer.c
+          src/midi.c src/keyboard.c src/console.c src/web.c \
+          src/jack_engine.c src/ring_buffer.c
 VENDOR  = vendor/tomlc99/toml.c
 OBJ     = $(SRC:.c=.o) $(VENDOR:.c=.o)
 

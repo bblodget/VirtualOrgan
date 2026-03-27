@@ -5,6 +5,9 @@ jack_client_name = "organ"
 num_outputs = 2
 release_fade_ms = 100
 
+[web]
+port = 8080
+
 # Ranks — pure sample definitions
 [ranks.gedackt8]
 sample_dir = "samples/Burea_Funeral_Chapel/Gedackt8"

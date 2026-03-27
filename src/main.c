@@ -24,6 +24,7 @@
 #include "midi.h"
 #include "keyboard.h"
 #include "console.h"
+#include "web.h"
 #include "mixer.h"
 #include "jack_engine.h"
 
@@ -150,6 +151,12 @@ int main(int argc, char **argv)
         return 1;
     }
 
+    /* Start web server if configured */
+    if (config.web_port > 0) {
+        if (web_start(config.web_port, &ring_buffer, &config, "web/index.html") != 0)
+            fprintf(stderr, "warning: cannot start web server\n");
+    }
+
     /* Start console controls if requested */
     if (console_mode) {
         if (console_start(&ring_buffer, &config, config_path) != 0) {
@@ -180,6 +187,7 @@ int main(int argc, char **argv)
 
     printf("\n\nShutting down...\n");
 
+    web_stop();
     jack_engine_stop();
     if (console_mode)
         console_stop();

@@ -28,6 +28,7 @@ int config_load(OrganConfig *cfg, const char *path)
     cfg->num_outputs = 2;
     cfg->release_fade_ms = 250;
     cfg->master_gain = 0.10f;
+    cfg->web_port = 0;  /* disabled by default */
     strncpy(cfg->jack_client_name, "organ", sizeof(cfg->jack_client_name) - 1);
 
     FILE *fp = fopen(path, "r");
@@ -70,6 +71,13 @@ int config_load(OrganConfig *cfg, const char *path)
             strncpy(cfg->jack_client_name, val.u.s, sizeof(cfg->jack_client_name) - 1);
             free(val.u.s);
         }
+    }
+
+    /* [web] section */
+    toml_table_t *web = toml_table_in(root, "web");
+    if (web) {
+        toml_datum_t val = toml_int_in(web, "port");
+        if (val.ok) cfg->web_port = (int)val.u.i;
     }
 
     /* [ranks.*] sections */
@@ -454,6 +462,8 @@ void config_print(const OrganConfig *cfg)
     printf("  buffer_size: %d\n", cfg->buffer_size);
     printf("  jack_client: %s\n", cfg->jack_client_name);
     printf("  num_outputs: %d\n", cfg->num_outputs);
+    if (cfg->web_port > 0)
+        printf("  web_port: %d\n", cfg->web_port);
     printf("  master_gain: %.2f\n", cfg->master_gain);
     printf("  ranks: %d\n", cfg->num_ranks);
 
