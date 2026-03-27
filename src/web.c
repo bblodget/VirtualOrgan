@@ -15,15 +15,26 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <microhttpd.h>
+#include <pthread.h>
+#include "mongoose.h"
 #include "web.h"
 #include "mixer.h"
 
-static struct MHD_Daemon *daemon_handle;
+static struct mg_mgr mgr;
+static pthread_t web_thread;
+static volatile int running;
 static RingBuffer *ring_buf;
 static OrganConfig *organ_config;
 static char *html_content;
 static size_t html_length;
+
+/* Track connected WebSocket clients */
+#define MAX_WS_CLIENTS 8
+static struct mg_connection *ws_clients[MAX_WS_CLIENTS];
+static int num_ws_clients;
+
+/* State snapshot for change detection */
+static char last_state[8192];
 
 /* ---- HTML file loading ---- */
 
@@ -39,10 +50,7 @@ static int load_html_file(const char *path)
     fseek(f, 0, SEEK_SET);
 
     html_content = malloc(size + 1);
-    if (!html_content) {
-        fclose(f);
-        return -1;
-    }
+    if (!html_content) { fclose(f); return -1; }
     size_t nread = fread(html_content, 1, size, f);
     (void)nread;
     html_content[size] = '\0';
@@ -147,131 +155,198 @@ static void apply_preset_quiet(int div_idx)
     }
 }
 
-/* ---- POST body accumulation ---- */
+/* ---- WebSocket client management ---- */
 
-struct PostData {
-    char buf[256];
-    int len;
-};
-
-/* ---- HTTP request handler ---- */
-
-static enum MHD_Result handle_request(
-    void *cls, struct MHD_Connection *connection,
-    const char *url, const char *method,
-    const char *version, const char *upload_data,
-    size_t *upload_data_size, void **con_cls)
+static void ws_add_client(struct mg_connection *c)
 {
-    (void)cls;
-    (void)version;
-
-    /* GET requests */
-    if (strcmp(method, "GET") == 0) {
-        struct MHD_Response *response;
-        enum MHD_Result ret;
-
-        if (strcmp(url, "/") == 0 && html_content) {
-            response = MHD_create_response_from_buffer(
-                html_length, html_content, MHD_RESPMEM_PERSISTENT);
-            MHD_add_response_header(response, "Content-Type", "text/html");
-            ret = MHD_queue_response(connection, MHD_HTTP_OK, response);
-            MHD_destroy_response(response);
-            return ret;
+    for (int i = 0; i < MAX_WS_CLIENTS; i++) {
+        if (!ws_clients[i]) {
+            ws_clients[i] = c;
+            num_ws_clients++;
+            return;
         }
+    }
+}
 
-        if (strcmp(url, "/api/state") == 0) {
+static void ws_remove_client(struct mg_connection *c)
+{
+    for (int i = 0; i < MAX_WS_CLIENTS; i++) {
+        if (ws_clients[i] == c) {
+            ws_clients[i] = NULL;
+            num_ws_clients--;
+            return;
+        }
+    }
+}
+
+static void ws_broadcast(const char *json, int len)
+{
+    for (int i = 0; i < MAX_WS_CLIENTS; i++) {
+        if (ws_clients[i])
+            mg_ws_send(ws_clients[i], json, len, WEBSOCKET_OP_TEXT);
+    }
+}
+
+/* ---- Process command from HTTP POST or WebSocket message ---- */
+
+static void process_command(const char *body, size_t len,
+                            char *response, size_t rsize)
+{
+    /* Null-terminate for string operations */
+    char buf[512];
+    if (len >= sizeof(buf)) len = sizeof(buf) - 1;
+    memcpy(buf, body, len);
+    buf[len] = '\0';
+
+    /* Determine action from "action" field */
+    char action[64] = {0};
+    const char *ap = strstr(buf, "\"action\":\"");
+    if (ap) {
+        ap += 10;
+        const char *end = strchr(ap, '"');
+        if (end && end - ap < 63) {
+            memcpy(action, ap, end - ap);
+            action[end - ap] = '\0';
+        }
+    }
+
+    if (strcmp(action, "toggle_stop") == 0) {
+        int div_idx = json_get_int(buf, "division");
+        int stop_idx = json_get_int(buf, "stop");
+        if (div_idx >= 0 && div_idx < organ_config->num_divisions &&
+            stop_idx >= 0 && stop_idx < organ_config->divisions[div_idx].num_stops) {
+            DivisionConfig *dc = &organ_config->divisions[div_idx];
+            StopConfig *sc = &dc->stops[stop_idx];
+            bool new_state = !sc->engaged;
+            uint8_t cc_val = new_state ? 127 : 0;
+            MidiEvent ev = {MIDI_CC, (uint8_t)dc->midi_channel,
+                            (uint8_t)sc->engage_cc, cc_val};
+            ring_buffer_push(ring_buf, &ev);
+        }
+    } else if (strcmp(action, "toggle_coupler") == 0) {
+        int idx = json_get_int(buf, "coupler");
+        if (idx >= 0 && idx < organ_config->num_couplers) {
+            CouplerConfig *coup = &organ_config->couplers[idx];
+            bool new_state = !coup->engaged;
+            uint8_t cc_val = new_state ? 127 : 0;
+            MidiEvent ev = {MIDI_CC, 1, (uint8_t)coup->engage_cc, cc_val};
+            ring_buffer_push(ring_buf, &ev);
+        }
+    } else if (strcmp(action, "set_gain") == 0) {
+        float val = json_get_float(buf, "value");
+        if (val >= 0.0f)
+            mixer_set_gain(val);
+    } else if (strcmp(action, "preset_full") == 0) {
+        apply_preset_full(json_get_int(buf, "division"));
+    } else if (strcmp(action, "preset_quiet") == 0) {
+        apply_preset_quiet(json_get_int(buf, "division"));
+    } else if (strcmp(action, "preset_off") == 0) {
+        apply_preset_off(json_get_int(buf, "division"));
+    }
+
+    if (response)
+        snprintf(response, rsize, "{\"ok\":true}");
+}
+
+/* ---- Mongoose event handler ---- */
+
+static void ev_handler(struct mg_connection *c, int ev, void *ev_data)
+{
+    if (ev == MG_EV_HTTP_MSG) {
+        struct mg_http_message *hm = (struct mg_http_message *)ev_data;
+
+        if (mg_match(hm->uri, mg_str("/ws"), NULL)) {
+            /* Upgrade to WebSocket */
+            mg_ws_upgrade(c, hm, NULL);
+            ws_add_client(c);
+            /* Send current state immediately */
             char json[8192];
             int len = build_state_json(json, sizeof(json));
-            response = MHD_create_response_from_buffer(
-                len, json, MHD_RESPMEM_MUST_COPY);
-            MHD_add_response_header(response, "Content-Type", "application/json");
-            ret = MHD_queue_response(connection, MHD_HTTP_OK, response);
-            MHD_destroy_response(response);
-            return ret;
+            mg_ws_send(c, json, len, WEBSOCKET_OP_TEXT);
+
+        } else if (mg_match(hm->uri, mg_str("/"), NULL)) {
+            /* Serve HTML */
+            mg_http_reply(c, 200, "Content-Type: text/html\r\n",
+                          "%.*s", (int)html_length, html_content);
+
+        } else if (mg_match(hm->uri, mg_str("/api/state"), NULL)) {
+            /* JSON state */
+            char json[8192];
+            int len = build_state_json(json, sizeof(json));
+            mg_http_reply(c, 200, "Content-Type: application/json\r\n",
+                          "%.*s", len, json);
+
+        } else if (mg_match(hm->uri, mg_str("/api/#"), NULL) &&
+                   mg_strcmp(hm->method, mg_str("POST")) == 0) {
+            /* Legacy HTTP POST API — convert to unified command */
+            char body[512];
+            int blen = hm->body.len < sizeof(body) - 1 ? hm->body.len : sizeof(body) - 1;
+            memcpy(body, hm->body.buf, blen);
+            body[blen] = '\0';
+
+            /* Map URL to action */
+            char cmd[512];
+            if (mg_match(hm->uri, mg_str("/api/stop/toggle"), NULL))
+                snprintf(cmd, sizeof(cmd), "{\"action\":\"toggle_stop\",%s", body + 1);
+            else if (mg_match(hm->uri, mg_str("/api/coupler/toggle"), NULL))
+                snprintf(cmd, sizeof(cmd), "{\"action\":\"toggle_coupler\",%s", body + 1);
+            else if (mg_match(hm->uri, mg_str("/api/gain"), NULL))
+                snprintf(cmd, sizeof(cmd), "{\"action\":\"set_gain\",%s", body + 1);
+            else if (mg_match(hm->uri, mg_str("/api/preset/full"), NULL))
+                snprintf(cmd, sizeof(cmd), "{\"action\":\"preset_full\",%s", body + 1);
+            else if (mg_match(hm->uri, mg_str("/api/preset/quiet"), NULL))
+                snprintf(cmd, sizeof(cmd), "{\"action\":\"preset_quiet\",%s", body + 1);
+            else if (mg_match(hm->uri, mg_str("/api/preset/off"), NULL))
+                snprintf(cmd, sizeof(cmd), "{\"action\":\"preset_off\",%s", body + 1);
+            else
+                cmd[0] = '\0';
+
+            char resp[64];
+            if (cmd[0])
+                process_command(cmd, strlen(cmd), resp, sizeof(resp));
+            else
+                snprintf(resp, sizeof(resp), "{\"error\":\"unknown\"}");
+
+            mg_http_reply(c, 200, "Content-Type: application/json\r\n",
+                          "%s", resp);
+
+        } else {
+            mg_http_reply(c, 404, "", "Not Found");
         }
 
-        /* 404 */
-        const char *nf = "Not Found";
-        response = MHD_create_response_from_buffer(
-            strlen(nf), (void *)nf, MHD_RESPMEM_PERSISTENT);
-        ret = MHD_queue_response(connection, MHD_HTTP_NOT_FOUND, response);
-        MHD_destroy_response(response);
-        return ret;
+    } else if (ev == MG_EV_WS_MSG) {
+        /* WebSocket message from client */
+        struct mg_ws_message *wm = (struct mg_ws_message *)ev_data;
+        process_command(wm->data.buf, wm->data.len, NULL, 0);
+
+    } else if (ev == MG_EV_CLOSE) {
+        ws_remove_client(c);
+    }
+}
+
+/* ---- Web server thread ---- */
+
+static void *web_thread_fn(void *arg)
+{
+    (void)arg;
+
+    while (running) {
+        mg_mgr_poll(&mgr, 50);  /* 50ms poll interval */
+
+        /* Check for state changes and broadcast to WebSocket clients */
+        if (num_ws_clients > 0) {
+            char json[8192];
+            int len = build_state_json(json, sizeof(json));
+            if (len != (int)strlen(last_state) ||
+                memcmp(json, last_state, len) != 0) {
+                ws_broadcast(json, len);
+                memcpy(last_state, json, len);
+                last_state[len] = '\0';
+            }
+        }
     }
 
-    /* POST requests — accumulate body */
-    if (strcmp(method, "POST") == 0) {
-        struct PostData *pd = *con_cls;
-
-        /* First call: allocate buffer */
-        if (!pd) {
-            pd = calloc(1, sizeof(struct PostData));
-            *con_cls = pd;
-            return MHD_YES;
-        }
-
-        /* Accumulate upload data */
-        if (*upload_data_size > 0) {
-            int space = sizeof(pd->buf) - pd->len - 1;
-            size_t copy = (*upload_data_size < (size_t)space) ? *upload_data_size : (size_t)space;
-            memcpy(pd->buf + pd->len, upload_data, copy);
-            pd->len += copy;
-            pd->buf[pd->len] = '\0';
-            *upload_data_size = 0;
-            return MHD_YES;
-        }
-
-        /* Final call: process the request */
-        const char *body = pd->buf;
-        struct MHD_Response *response;
-        enum MHD_Result ret;
-        const char *ok = "{\"ok\":true}";
-
-        if (strcmp(url, "/api/stop/toggle") == 0) {
-            int div_idx = json_get_int(body, "division");
-            int stop_idx = json_get_int(body, "stop");
-            if (div_idx >= 0 && div_idx < organ_config->num_divisions &&
-                stop_idx >= 0 && stop_idx < organ_config->divisions[div_idx].num_stops) {
-                DivisionConfig *dc = &organ_config->divisions[div_idx];
-                StopConfig *sc = &dc->stops[stop_idx];
-                bool new_state = !sc->engaged;
-                uint8_t cc_val = new_state ? 127 : 0;
-                MidiEvent ev = {MIDI_CC, (uint8_t)dc->midi_channel,
-                                (uint8_t)sc->engage_cc, cc_val};
-                ring_buffer_push(ring_buf, &ev);
-            }
-        } else if (strcmp(url, "/api/coupler/toggle") == 0) {
-            int idx = json_get_int(body, "coupler");
-            if (idx >= 0 && idx < organ_config->num_couplers) {
-                CouplerConfig *coup = &organ_config->couplers[idx];
-                bool new_state = !coup->engaged;
-                uint8_t cc_val = new_state ? 127 : 0;
-                MidiEvent ev = {MIDI_CC, 1, (uint8_t)coup->engage_cc, cc_val};
-                ring_buffer_push(ring_buf, &ev);
-            }
-        } else if (strcmp(url, "/api/gain") == 0) {
-            float val = json_get_float(body, "value");
-            if (val >= 0.0f)
-                mixer_set_gain(val);
-        } else if (strcmp(url, "/api/preset/full") == 0) {
-            apply_preset_full(json_get_int(body, "division"));
-        } else if (strcmp(url, "/api/preset/quiet") == 0) {
-            apply_preset_quiet(json_get_int(body, "division"));
-        } else if (strcmp(url, "/api/preset/off") == 0) {
-            apply_preset_off(json_get_int(body, "division"));
-        }
-
-        response = MHD_create_response_from_buffer(
-            strlen(ok), (void *)ok, MHD_RESPMEM_PERSISTENT);
-        MHD_add_response_header(response, "Content-Type", "application/json");
-        ret = MHD_queue_response(connection, MHD_HTTP_OK, response);
-        MHD_destroy_response(response);
-        free(pd);
-        *con_cls = NULL;
-        return ret;
-    }
-
-    return MHD_NO;
+    return NULL;
 }
 
 /* ---- Public API ---- */
@@ -285,29 +360,42 @@ int web_start(int port, RingBuffer *rb, OrganConfig *config,
     if (load_html_file(html_path) != 0)
         return -1;
 
-    daemon_handle = MHD_start_daemon(
-        MHD_USE_INTERNAL_POLLING_THREAD,
-        port, NULL, NULL,
-        &handle_request, NULL,
-        MHD_OPTION_END);
+    mg_mgr_init(&mgr);
 
-    if (!daemon_handle) {
-        fprintf(stderr, "web: cannot start HTTP server on port %d\n", port);
+    char url[64];
+    snprintf(url, sizeof(url), "http://0.0.0.0:%d", port);
+
+    if (!mg_http_listen(&mgr, url, ev_handler, NULL)) {
+        fprintf(stderr, "web: cannot listen on %s\n", url);
         free(html_content);
         html_content = NULL;
         return -1;
     }
 
-    printf("web: listening on http://0.0.0.0:%d/\n", port);
+    memset(ws_clients, 0, sizeof(ws_clients));
+    num_ws_clients = 0;
+    last_state[0] = '\0';
+    running = 1;
+
+    if (pthread_create(&web_thread, NULL, web_thread_fn, NULL) != 0) {
+        fprintf(stderr, "web: cannot create thread\n");
+        mg_mgr_free(&mgr);
+        free(html_content);
+        html_content = NULL;
+        return -1;
+    }
+
+    printf("web: listening on %s\n", url);
     return 0;
 }
 
 void web_stop(void)
 {
-    if (daemon_handle) {
-        MHD_stop_daemon(daemon_handle);
-        daemon_handle = NULL;
+    if (running) {
+        running = 0;
+        pthread_join(web_thread, NULL);
     }
+    mg_mgr_free(&mgr);
     free(html_content);
     html_content = NULL;
 }

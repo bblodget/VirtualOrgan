@@ -141,58 +141,43 @@ body {
 <script>
 let state = null;
 let activeDiv = 0;
+let ws = null;
 
-async function fetchState() {
-  try {
-    const r = await fetch('/api/state');
-    state = await r.json();
+function connectWS() {
+  const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  ws = new WebSocket(proto + '//' + location.host + '/ws');
+  ws.onmessage = (e) => {
+    state = JSON.parse(e.data);
     render();
-  } catch(e) {}
+  };
+  ws.onclose = () => {
+    // Reconnect after 1 second
+    setTimeout(connectWS, 1000);
+  };
+  ws.onerror = () => ws.close();
 }
 
-async function toggleStop(div, stop) {
-  // Optimistic update — flip locally and re-render immediately
-  if (state && state.divisions[div] && state.divisions[div].stops[stop]) {
-    state.divisions[div].stops[stop].engaged =
-      !state.divisions[div].stops[stop].engaged;
-    render();
-  }
-  await fetch('/api/stop/toggle', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({division: div, stop: stop})
-  });
+function send(msg) {
+  if (ws && ws.readyState === WebSocket.OPEN)
+    ws.send(JSON.stringify(msg));
 }
 
-async function toggleCoupler(idx) {
-  if (state && state.couplers[idx]) {
-    state.couplers[idx].engaged = !state.couplers[idx].engaged;
-    render();
-  }
-  await fetch('/api/coupler/toggle', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({coupler: idx})
-  });
+function toggleStop(div, stop) {
+  send({action: 'toggle_stop', division: div, stop: stop});
+}
+
+function toggleCoupler(idx) {
+  send({action: 'toggle_coupler', coupler: idx});
 }
 
 function setGain(val) {
   const g = val / 100.0;
   document.getElementById('gain-value').textContent = g.toFixed(2);
-  fetch('/api/gain', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({value: g})
-  });
+  send({action: 'set_gain', value: g});
 }
 
-async function preset(name) {
-  await fetch('/api/preset/' + name, {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({division: activeDiv})
-  });
-  setTimeout(fetchState, 100);
+function preset(name) {
+  send({action: 'preset_' + name, division: activeDiv});
 }
 
 function render() {
@@ -249,9 +234,8 @@ function render() {
   }
 }
 
-// Poll every 500ms
-setInterval(fetchState, 500);
-fetchState();
+// Connect WebSocket
+connectWS();
 </script>
 </body>
 </html>
