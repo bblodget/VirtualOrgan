@@ -226,6 +226,24 @@ Our system also configures real-time scheduling privileges via:
 
 This allows any user in the `audio` group to request real-time scheduling and lock memory (preventing the OS from swapping audio data to disk).
 
+### Linux Capabilities and Privileged Ports
+
+Our organ engine includes a built-in web server for iPad control. The standard HTTP port is **80**, but on Linux only root can bind to ports below 1024. Running the entire engine as root would be a security risk and would complicate JACK and ALSA permissions.
+
+Linux **capabilities** solve this by granting specific privileges to a program without giving it full root access. The `cap_net_bind_service` capability allows a program to bind to privileged ports:
+
+```bash
+sudo setcap cap_net_bind_service=+ep organ-engine
+```
+
+The flags mean:
+- `e` (effective) — the capability is active when the program runs
+- `p` (permitted) — the program is allowed to use this capability
+
+This is stored in the file's extended attributes, so it must be re-applied after each recompile. The project's `make install` target handles this automatically.
+
+This is the same mechanism that allows programs like `ping` to send raw network packets without root — each program gets only the specific privileges it needs, following the **principle of least privilege**.
+
 ---
 
 ## Chapter 3: MIDI — The Language of Musical Instruments

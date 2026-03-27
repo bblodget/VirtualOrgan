@@ -29,6 +29,10 @@ gen-samples: test/gen_test_samples.c
 	mkdir -p samples/test
 	./gen-samples samples/test
 
+install: $(TARGET)
+	sudo setcap cap_net_bind_service=+ep $(TARGET)
+	@echo "Granted port 80 capability to $(TARGET)"
+
 clean:
 	rm -f $(OBJ) $(TARGET) gen-samples
 
@@ -36,12 +40,13 @@ help:
 	@echo "VirtualOrgan — Build Targets"
 	@echo ""
 	@echo "  make              Build the organ engine"
+	@echo "  make install      Build + grant port 80 capability (needs sudo)"
 	@echo "  make clean        Remove build artifacts"
 	@echo "  make gen-samples  Generate sine wave test samples in samples/test/"
 	@echo "  make help         Show this help"
 	@echo ""
 	@echo "Usage:"
-	@echo "  ./organ-engine <config.toml> [--fake-midi | --keyboard]"
+	@echo "  ./organ-engine <config.toml> [--fake-midi | --keyboard | --console]"
 	@echo ""
 	@echo "Examples:"
 	@echo "  ./organ-engine test/test_config.toml --fake-midi   Test with generated sine waves"
@@ -49,4 +54,4 @@ help:
 	@echo "  ./organ-engine test/burea_config.toml --keyboard   Play with computer keyboard"
 	@echo "  ./organ-engine test/burea_config.toml              Real MIDI keyboard input"
 
-.PHONY: all clean gen-samples help
+.PHONY: all install clean gen-samples help

@@ -7,7 +7,7 @@ release_fade_ms = 150
 master_gain = 0.50
 
 [web]
-port = 8080
+port = 80
 
 # Caen St. Étienne, Cavaillé-Coll (Demo)
 # Each rank loads diffuse + rear perspectives from separate directories
@@ -135,6 +135,20 @@ sample_dir = [
 ]
 filename_pattern = "{note:03d}-{name}.wav"
 
+######################
+# MIDI device mapping
+######################
+
+[midi_devices."Digital Piano"]
+midi_channel = 1
+
+[midi_devices.CH345]
+midi_channel = 1
+
+######################
+# Perspective routing
+######################
+
 # At Dad's: perspective 1 → front speakers, perspective 2 → rear speakers
 [routing.front]
 source = { perspective = 1 }
@@ -144,39 +158,9 @@ output_channels = [1, 2, 5, 6]
 source = { perspective = 2 }
 output_channels = [3, 4, 7, 8]
 
-# MIDI device mapping
-[midi_devices.CH345]
-midi_channel = 2
-
-[midi_devices."Digital Piano"]
-midi_channel = 1
-
-# Grand Orgue (Great) — notes 36+ on channel 1
-[divisions.great]
-midi_channel = 1
-note_range = [36, 96]
-expression_cc = 11
-
-[divisions.great.stops]
-montre8 = { rank = "montre8", engage_cc = 39, engaged = true }
-bourdon8 = { rank = "bourdon8", engage_cc = 37, engaged = true }
-fluteharmonique8 = { rank = "fluteharmonique8", engage_cc = 41, engaged = true }
-gambe8 = { rank = "gambe8", engage_cc = 43, engaged = true }
-trompette8 = { rank = "trompette8", engage_cc = 45, engaged = true }
-bombarde16 = { rank = "bombarde16", engage_cc = 47 }
-
-# Récit (Swell)
-[divisions.swell]
-midi_channel = 3
-expression_cc = 12
-
-[divisions.swell.stops]
-diapason8 = { rank = "diapason8", engage_cc = 50, engaged = true }
-bassonhautbois8 = { rank = "bassonhautbois8", engage_cc = 51, engaged = false }
-fluteoctaviante4 = { rank = "fluteoctaviante4", engage_cc = 52 }
-nasard = { rank = "nasard", engage_cc = 53 }
-octavin2 = { rank = "octavin2", engage_cc = 54 }
-cornet = { rank = "cornet", engage_cc = 55 }
+######################
+# Custom routing
+######################
 
 # Fix Récit silent left channel — use only right channel (2)
 [routing.recit_fix_near]
@@ -187,14 +171,45 @@ output_channels = [1, 2, 5, 6]
 source = { division = "swell", perspective = 2, channel = 2 }
 output_channels = [3, 4, 7, 8]
 
+######################
+# Divisions
+######################
+
+# Grand Orgue (Great) — notes 36+ on channel 1
+[divisions.great]
+midi_channel = 1
+note_range = [36, 96]
+expression_cc = 11
+
+[divisions.great.stops]
+montre8 = { rank = "montre8", engage_cc = 39, engaged = true }
+bourdon8 = { rank = "bourdon8", engage_cc = 37 }
+fluteharmonique8 = { rank = "fluteharmonique8", engage_cc = 41 }
+gambe8 = { rank = "gambe8", engage_cc = 43 }
+trompette8 = { rank = "trompette8", engage_cc = 45 }
+bombarde16 = { rank = "bombarde16", engage_cc = 47 }
+
+# Récit (Swell)
+[divisions.swell]
+midi_channel = 1
+expression_cc = 12
+
+[divisions.swell.stops]
+diapason8 = { rank = "diapason8", engage_cc = 50 }
+bassonhautbois8 = { rank = "bassonhautbois8", engage_cc = 51 }
+fluteoctaviante4 = { rank = "fluteoctaviante4", engage_cc = 52 }
+nasard = { rank = "nasard", engage_cc = 53 }
+octavin2 = { rank = "octavin2", engage_cc = 54 }
+cornet = { rank = "cornet", engage_cc = 55 }
+
 # Positif (Choir)
 [divisions.choir]
-midi_channel = 3
+midi_channel = 1
 expression_cc = 13
 
 [divisions.choir.stops]
-bourdon16 = { rank = "bourdon16", engage_cc = 60, engaged = true }
-cordenuit8 = { rank = "cordenuit8", engage_cc = 61, engaged = true }
+bourdon16 = { rank = "bourdon16", engage_cc = 60 }
+cordenuit8 = { rank = "cordenuit8", engage_cc = 61 }
 salicional8 = { rank = "salicional8", engage_cc = 62 }
 
 # Pédale — low notes (24-35) on channel 1 from Digital Piano
@@ -205,3 +220,4 @@ note_range = [24, 35]
 [divisions.pedal.stops]
 contrebasse16 = { rank = "contrebasse16", engage_cc = 70, engaged = true }
 grosseflute8 = { rank = "grosseflute8", engage_cc = 71, engaged = true }
+

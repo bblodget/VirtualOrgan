@@ -26,6 +26,16 @@ make        # build the organ engine
 make help   # show all targets
 ```
 
+### Install (port 80 capability)
+
+To serve the web interface on port 80 (standard HTTP) without running as root:
+
+```bash
+make install   # builds + grants port 80 capability (needs sudo)
+```
+
+This runs `setcap cap_net_bind_service=+ep` on the binary, which grants it permission to bind to privileged ports (below 1024) as a regular user. You need to re-run `make install` after each rebuild.
+
 ## Sample Files
 
 The engine plays WAV files organized into directories by rank. Samples are not included in this repo — they go in the `samples/` directory.
