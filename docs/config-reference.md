@@ -205,11 +205,12 @@ midi_channel = 1
 note_range = [24, 35]
 ```
 
-| Field           | Type      | Default    | Description              |
-|-----------------|-----------|------------|--------------------------|
-| `midi_channel`  | int       | (required) | MIDI channel (1-16).     |
-| `expression_cc` | int       | (none)     | CC for expression pedal. |
-| `note_range`    | int array | (none)     | MIDI note range.         |
+| Field                | Type      | Default    | Description              |
+|----------------------|-----------|------------|--------------------------|
+| `midi_channel`       | int       | (required) | MIDI channel (1-16).     |
+| `expression_cc`      | int       | (none)     | CC for expression pedal. |
+| `note_range`         | int array | (none)     | MIDI note range.         |
+| `velocity_sensitive` | bool      | `false`    | Respond to key velocity. |
 
 - `midi_channel` — notes on this channel trigger this
   division's engaged stops.
@@ -218,6 +219,10 @@ note_range = [24, 35]
   MIDI notes. Use `[low, high]` (inclusive) or `[note]`.
   Enables **keyboard splits** — multiple divisions on the
   same MIDI channel responding to different note ranges.
+- `velocity_sensitive` — default `false` (organ mode): all
+  notes play at full volume regardless of how hard the key
+  is struck, matching real pipe organ behavior. Set to `true`
+  for piano-style velocity response.
 - If no `[divisions]` section is present, all ranks are
   triggered by any MIDI channel (legacy mode).
 

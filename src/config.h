@@ -73,6 +73,7 @@ typedef struct {
     float       expression_gain;           /* runtime: 0.0–1.0, default 1.0 */
     int         note_range[2];             /* [low, high] MIDI note range (optional) */
     bool        has_note_range;
+    bool        velocity_sensitive;        /* false = organ mode (full volume always) */
     StopConfig  stops[MAX_STOPS_PER_DIV];
     int         num_stops;
 } DivisionConfig;

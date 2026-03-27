@@ -140,6 +140,11 @@ int config_load(OrganConfig *cfg, const char *path)
             val = toml_int_in(div, "expression_cc");
             if (val.ok) dc->expression_cc = (int)val.u.i;
 
+            /* Velocity sensitivity — default false (organ mode) */
+            dc->velocity_sensitive = false;
+            val = toml_bool_in(div, "velocity_sensitive");
+            if (val.ok) dc->velocity_sensitive = val.u.b;
+
             /* Optional note_range for keyboard splits */
             dc->has_note_range = false;
             toml_array_t *nrange = toml_array_in(div, "note_range");

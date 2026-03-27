@@ -75,6 +75,10 @@ static void trigger_division(int div_idx, uint8_t note, uint8_t velocity)
     OrganConfig *cfg = engine_ctx->config;
     DivisionConfig *dc = &cfg->divisions[div_idx];
 
+    /* Organ mode: ignore velocity, always play at full volume */
+    if (!dc->velocity_sensitive)
+        velocity = 127;
+
     for (int s = 0; s < dc->num_stops; s++) {
         StopConfig *sc = &dc->stops[s];
         if (!sc->engaged || sc->num_ranks == 0)
