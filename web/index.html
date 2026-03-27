@@ -187,7 +187,11 @@ function setGain(val) {
 }
 
 async function preset(name) {
-  await fetch('/api/preset/' + name, {method: 'POST'});
+  await fetch('/api/preset/' + name, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({division: activeDiv})
+  });
   setTimeout(fetchState, 100);
 }
 

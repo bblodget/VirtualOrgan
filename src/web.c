@@ -113,41 +113,37 @@ static float json_get_float(const char *json, const char *key)
 
 /* ---- Preset logic ---- */
 
-static void apply_preset_full_organ(void)
+static void apply_preset_full(int div_idx)
 {
-    for (int d = 0; d < organ_config->num_divisions; d++) {
-        DivisionConfig *dc = &organ_config->divisions[d];
-        for (int s = 0; s < dc->num_stops; s++) {
-            MidiEvent ev = {MIDI_CC, (uint8_t)dc->midi_channel,
-                            (uint8_t)dc->stops[s].engage_cc, 127};
-            ring_buffer_push(ring_buf, &ev);
-        }
+    if (div_idx < 0 || div_idx >= organ_config->num_divisions) return;
+    DivisionConfig *dc = &organ_config->divisions[div_idx];
+    for (int s = 0; s < dc->num_stops; s++) {
+        MidiEvent ev = {MIDI_CC, (uint8_t)dc->midi_channel,
+                        (uint8_t)dc->stops[s].engage_cc, 127};
+        ring_buffer_push(ring_buf, &ev);
     }
 }
 
-static void apply_preset_all_off(void)
+static void apply_preset_off(int div_idx)
 {
-    for (int d = 0; d < organ_config->num_divisions; d++) {
-        DivisionConfig *dc = &organ_config->divisions[d];
-        for (int s = 0; s < dc->num_stops; s++) {
-            MidiEvent ev = {MIDI_CC, (uint8_t)dc->midi_channel,
-                            (uint8_t)dc->stops[s].engage_cc, 0};
-            ring_buffer_push(ring_buf, &ev);
-        }
+    if (div_idx < 0 || div_idx >= organ_config->num_divisions) return;
+    DivisionConfig *dc = &organ_config->divisions[div_idx];
+    for (int s = 0; s < dc->num_stops; s++) {
+        MidiEvent ev = {MIDI_CC, (uint8_t)dc->midi_channel,
+                        (uint8_t)dc->stops[s].engage_cc, 0};
+        ring_buffer_push(ring_buf, &ev);
     }
 }
 
-static void apply_preset_quiet(void)
+static void apply_preset_quiet(int div_idx)
 {
-    apply_preset_all_off();
-    /* Engage first stop of each division */
-    for (int d = 0; d < organ_config->num_divisions; d++) {
-        DivisionConfig *dc = &organ_config->divisions[d];
-        if (dc->num_stops > 0) {
-            MidiEvent ev = {MIDI_CC, (uint8_t)dc->midi_channel,
-                            (uint8_t)dc->stops[0].engage_cc, 127};
-            ring_buffer_push(ring_buf, &ev);
-        }
+    if (div_idx < 0 || div_idx >= organ_config->num_divisions) return;
+    apply_preset_off(div_idx);
+    DivisionConfig *dc = &organ_config->divisions[div_idx];
+    if (dc->num_stops > 0) {
+        MidiEvent ev = {MIDI_CC, (uint8_t)dc->midi_channel,
+                        (uint8_t)dc->stops[0].engage_cc, 127};
+        ring_buffer_push(ring_buf, &ev);
     }
 }
 
@@ -258,11 +254,11 @@ static enum MHD_Result handle_request(
             if (val >= 0.0f)
                 mixer_set_gain(val);
         } else if (strcmp(url, "/api/preset/full") == 0) {
-            apply_preset_full_organ();
+            apply_preset_full(json_get_int(body, "division"));
         } else if (strcmp(url, "/api/preset/quiet") == 0) {
-            apply_preset_quiet();
+            apply_preset_quiet(json_get_int(body, "division"));
         } else if (strcmp(url, "/api/preset/off") == 0) {
-            apply_preset_all_off();
+            apply_preset_off(json_get_int(body, "division"));
         }
 
         response = MHD_create_response_from_buffer(
