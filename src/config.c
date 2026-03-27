@@ -27,6 +27,7 @@ int config_load(OrganConfig *cfg, const char *path)
     cfg->buffer_size = 128;
     cfg->num_outputs = 2;
     cfg->release_fade_ms = 250;
+    cfg->master_gain = 0.10f;
     strncpy(cfg->jack_client_name, "organ", sizeof(cfg->jack_client_name) - 1);
 
     FILE *fp = fopen(path, "r");
@@ -60,6 +61,9 @@ int config_load(OrganConfig *cfg, const char *path)
 
         val = toml_int_in(audio, "release_fade_ms");
         if (val.ok) cfg->release_fade_ms = (int)val.u.i;
+
+        toml_datum_t dval = toml_double_in(audio, "master_gain");
+        if (dval.ok) cfg->master_gain = (float)dval.u.d;
 
         val = toml_string_in(audio, "jack_client_name");
         if (val.ok) {
@@ -422,6 +426,7 @@ int config_reload(OrganConfig *cfg, const char *path)
     /* Copy safe-to-change fields */
     cfg->num_outputs = new_cfg.num_outputs;
     cfg->release_fade_ms = new_cfg.release_fade_ms;
+    cfg->master_gain = new_cfg.master_gain;
 
     cfg->num_divisions = new_cfg.num_divisions;
     for (int d = 0; d < new_cfg.num_divisions && d < MAX_DIVISIONS; d++)
@@ -449,6 +454,7 @@ void config_print(const OrganConfig *cfg)
     printf("  buffer_size: %d\n", cfg->buffer_size);
     printf("  jack_client: %s\n", cfg->jack_client_name);
     printf("  num_outputs: %d\n", cfg->num_outputs);
+    printf("  master_gain: %.2f\n", cfg->master_gain);
     printf("  ranks: %d\n", cfg->num_ranks);
 
     for (int i = 0; i < cfg->num_ranks; i++) {

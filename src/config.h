@@ -98,6 +98,7 @@ typedef struct {
     int             buffer_size;
     int             num_outputs;    /* JACK output ports (default 2) */
     int             release_fade_ms; /* release fade-out duration in ms (default 250) */
+    float           master_gain;     /* initial master gain (default 0.10) */
     char            jack_client_name[64];
     RankConfig      ranks[MAX_RANKS];
     int             num_ranks;

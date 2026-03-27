@@ -24,6 +24,7 @@
 #include "midi.h"
 #include "keyboard.h"
 #include "console.h"
+#include "mixer.h"
 #include "jack_engine.h"
 
 static volatile int quit = 0;
@@ -65,6 +66,9 @@ int main(int argc, char **argv)
     if (config_load(&config, config_path) != 0)
         return 1;
     config_print(&config);
+
+    /* Apply configured master gain */
+    mixer_set_gain(config.master_gain);
 
     /* Load samples for all ranks */
     if (config.num_ranks == 0) {
