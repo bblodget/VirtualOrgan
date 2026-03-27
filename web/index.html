@@ -36,34 +36,26 @@ body {
   background: #6a6aff; cursor: pointer;
 }
 .gain-value { font-size: 14px; color: #aaa; width: 40px; }
-.div-tabs {
-  display: flex; gap: 6px; padding: 0 0 12px;
-  overflow-x: auto;
+.division-section {
+  padding: 8px 0 4px;
 }
-.div-tab {
-  padding: 10px 16px; border-radius: 6px;
-  border: 2px solid #444; background: #2a2a2a;
-  color: #ccc; font-size: 15px; cursor: pointer;
-  white-space: nowrap;
-  -webkit-tap-highlight-color: transparent;
-  touch-action: manipulation;
-}
-.div-tab.active {
-  background: #2a2a4a; border-color: #6a6aff;
-  color: #fff;
+.division-label {
+  font-size: 14px; color: #999;
+  padding: 4px 0; text-transform: uppercase;
+  letter-spacing: 1px; font-weight: 600;
 }
 .stops-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-  gap: 10px; padding: 8px 0 16px;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 8px; padding: 6px 0 8px;
 }
 .stop-btn {
-  min-height: 56px; border-radius: 8px;
+  min-height: 50px; border-radius: 8px;
   border: 2px solid #444; background: #2a2a2a;
-  color: #ccc; font-size: 15px; cursor: pointer;
+  color: #ccc; font-size: 14px; cursor: pointer;
   display: flex; align-items: center;
   justify-content: center; text-align: center;
-  padding: 8px; line-height: 1.2;
+  padding: 6px; line-height: 1.2;
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
   transition: background 0.15s, border-color 0.15s;
@@ -74,15 +66,15 @@ body {
 }
 .section-label {
   font-size: 13px; color: #777;
-  padding: 4px 0; text-transform: uppercase;
+  padding: 8px 0 4px; text-transform: uppercase;
   letter-spacing: 1px;
 }
 .coupler-row {
-  display: flex; gap: 10px; padding: 4px 0 12px;
+  display: flex; gap: 10px; padding: 4px 0 8px;
   flex-wrap: wrap;
 }
 .coupler-btn {
-  min-height: 48px; min-width: 120px;
+  min-height: 44px; min-width: 120px;
   border-radius: 8px; border: 2px solid #554;
   background: #2a2a2a; color: #ccc;
   font-size: 14px; cursor: pointer;
@@ -95,12 +87,35 @@ body {
   background: #3a2a1a; border-color: #8a6a3a;
   color: #fb3; box-shadow: 0 0 8px rgba(200,150,0,0.15);
 }
+.expression-section {
+  padding: 12px 0 8px;
+}
+.expression-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 6px 0;
+}
+.expression-row label {
+  font-size: 14px; color: #999; min-width: 70px;
+}
+.expression-row input[type=range] {
+  flex: 1; max-width: 300px; height: 8px;
+  -webkit-appearance: none; appearance: none;
+  background: #444; border-radius: 4px; outline: none;
+}
+.expression-row input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none;
+  width: 28px; height: 28px; border-radius: 50%;
+  background: #5a8a5a; cursor: pointer;
+}
+.expression-value {
+  font-size: 14px; color: #aaa; width: 45px; text-align: right;
+}
 .preset-row {
   display: flex; gap: 10px; padding: 4px 0;
   flex-wrap: wrap;
 }
 .preset-btn {
-  min-height: 48px; border-radius: 8px;
+  min-height: 44px; border-radius: 8px;
   border: 2px solid #446; background: #2a2a3a;
   color: #aac; font-size: 14px; cursor: pointer;
   padding: 8px 20px;
@@ -122,13 +137,16 @@ body {
   </div>
 </div>
 
-<div class="div-tabs" id="div-tabs"></div>
-
-<div class="stops-grid" id="stops-grid"></div>
+<div id="all-divisions"></div>
 
 <div id="couplers-section" style="display:none">
   <div class="section-label">Couplers</div>
   <div class="coupler-row" id="coupler-row"></div>
+</div>
+
+<div class="expression-section">
+  <div class="section-label">Division Volume</div>
+  <div id="expression-sliders"></div>
 </div>
 
 <div class="section-label">Presets</div>
@@ -140,7 +158,6 @@ body {
 
 <script>
 let state = null;
-let activeDiv = 0;
 let ws = null;
 
 function connectWS() {
@@ -151,7 +168,6 @@ function connectWS() {
     render();
   };
   ws.onclose = () => {
-    // Reconnect after 1 second
     setTimeout(connectWS, 1000);
   };
   ws.onerror = () => ws.close();
@@ -176,8 +192,18 @@ function setGain(val) {
   send({action: 'set_gain', value: g});
 }
 
+function setExpression(divIdx, val) {
+  const g = val / 100.0;
+  const el = document.getElementById('expr-value-' + divIdx);
+  if (el) el.textContent = Math.round(g * 100) + '%';
+  send({action: 'set_expression', division: divIdx, value: g});
+}
+
 function preset(name) {
-  send({action: 'preset_' + name, division: activeDiv});
+  if (!state) return;
+  state.divisions.forEach((div, d) => {
+    send({action: 'preset_' + name, division: d});
+  });
 }
 
 function render() {
@@ -192,29 +218,82 @@ function render() {
     gv.textContent = state.gain.toFixed(2);
   }
 
-  // Division tabs
-  const tabs = document.getElementById('div-tabs');
-  tabs.innerHTML = '';
-  state.divisions.forEach((div, i) => {
-    const btn = document.createElement('button');
-    btn.className = 'div-tab' + (i === activeDiv ? ' active' : '');
-    btn.textContent = div.name;
-    btn.onclick = () => { activeDiv = i; render(); };
-    tabs.appendChild(btn);
+  // All divisions with stops — update in-place
+  const allDiv = document.getElementById('all-divisions');
+  state.divisions.forEach((div, d) => {
+    let section = document.getElementById('div-section-' + d);
+    if (!section) {
+      // First render — create the section
+      section = document.createElement('div');
+      section.className = 'division-section';
+      section.id = 'div-section-' + d;
+
+      const label = document.createElement('div');
+      label.className = 'division-label';
+      label.textContent = div.name;
+      section.appendChild(label);
+
+      const grid = document.createElement('div');
+      grid.className = 'stops-grid';
+      grid.id = 'stops-grid-' + d;
+      div.stops.forEach((stop, s) => {
+        const btn = document.createElement('button');
+        btn.className = 'stop-btn';
+        btn.id = 'stop-' + d + '-' + s;
+        btn.textContent = stop.name;
+        btn.onclick = () => toggleStop(d, s);
+        grid.appendChild(btn);
+      });
+      section.appendChild(grid);
+
+      allDiv.appendChild(section);
+    }
+    // Update stop engaged states
+    div.stops.forEach((stop, s) => {
+      const btn = document.getElementById('stop-' + d + '-' + s);
+      if (btn) {
+        btn.className = 'stop-btn' + (stop.engaged ? ' engaged' : '');
+      }
+    });
   });
 
-  // Stops grid
-  const grid = document.getElementById('stops-grid');
-  grid.innerHTML = '';
-  if (state.divisions[activeDiv]) {
-    state.divisions[activeDiv].stops.forEach((stop, s) => {
-      const btn = document.createElement('button');
-      btn.className = 'stop-btn' + (stop.engaged ? ' engaged' : '');
-      btn.textContent = stop.name;
-      btn.onclick = () => toggleStop(activeDiv, s);
-      grid.appendChild(btn);
-    });
-  }
+  // Expression sliders — update in-place to preserve drag state
+  const exprDiv = document.getElementById('expression-sliders');
+  state.divisions.forEach((div, d) => {
+    let slider = document.getElementById('expr-slider-' + d);
+    if (!slider) {
+      // First render — create the row
+      const row = document.createElement('div');
+      row.className = 'expression-row';
+      row.id = 'expr-row-' + d;
+
+      const label = document.createElement('label');
+      label.textContent = div.name;
+      row.appendChild(label);
+
+      slider = document.createElement('input');
+      slider.type = 'range';
+      slider.min = '0';
+      slider.max = '100';
+      slider.step = '1';
+      slider.id = 'expr-slider-' + d;
+      slider.oninput = function() { setExpression(d, this.value); };
+      row.appendChild(slider);
+
+      const val = document.createElement('span');
+      val.className = 'expression-value';
+      val.id = 'expr-value-' + d;
+      row.appendChild(val);
+
+      exprDiv.appendChild(row);
+    }
+    // Update value only if not being dragged
+    if (document.activeElement !== slider) {
+      slider.value = Math.round(div.expression * 100);
+      document.getElementById('expr-value-' + d).textContent =
+        Math.round(div.expression * 100) + '%';
+    }
+  });
 
   // Couplers
   const csec = document.getElementById('couplers-section');
@@ -232,9 +311,10 @@ function render() {
   } else {
     csec.style.display = 'none';
   }
+
+  // Presets — apply to all divisions
 }
 
-// Connect WebSocket
 connectWS();
 </script>
 </body>

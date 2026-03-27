@@ -236,6 +236,13 @@ static void process_command(const char *body, size_t len,
         float val = json_get_float(buf, "value");
         if (val >= 0.0f)
             mixer_set_gain(val);
+    } else if (strcmp(action, "set_expression") == 0) {
+        int div_idx = json_get_int(buf, "division");
+        float val = json_get_float(buf, "value");
+        if (div_idx >= 0 && div_idx < organ_config->num_divisions && val >= 0.0f) {
+            if (val > 1.0f) val = 1.0f;
+            organ_config->divisions[div_idx].expression_gain = val;
+        }
     } else if (strcmp(action, "preset_full") == 0) {
         apply_preset_full(json_get_int(buf, "division"));
     } else if (strcmp(action, "preset_quiet") == 0) {
