@@ -56,7 +56,7 @@ ENGINE_PID=$!
 log "Waiting for organ-engine ALSA sequencer port..."
 ORGAN_PORT=""
 for i in $(seq 1 30); do
-    ORGAN_PORT=$(aconnect -o 2>/dev/null | grep "$ORGAN_SEQ_NAME" | head -1 | sed 's/client \([0-9]*\).*/\1/')
+    ORGAN_PORT=$(aconnect -o 2>/dev/null | grep "$ORGAN_SEQ_NAME" | head -1 | sed 's/client \([0-9]*\).*/\1/' || true)
     if [ -n "$ORGAN_PORT" ]; then
         log "organ-engine sequencer port found: client $ORGAN_PORT (attempt $i)"
         break
@@ -77,18 +77,21 @@ fi
 connect_midi() {
     if [ -z "$ORGAN_PORT" ]; then return; fi
 
-    aconnect -i 2>/dev/null | grep '^client [0-9]' | while read -r line; do
+    local clients
+    clients=$(aconnect -i 2>/dev/null | grep '^client [0-9]' || true)
+
+    while IFS= read -r line; do
+        [ -z "$line" ] && continue
         local cid
         cid=$(echo "$line" | sed 's/client \([0-9]*\).*/\1/')
         # Skip system clients (0=System, 14=Midi Through) and organ-engine itself
-        if [ "$cid" -le 15 ] || [ "$cid" = "$ORGAN_PORT" ]; then
-            continue
-        fi
+        [ "$cid" -le 15 ] && continue
+        [ "$cid" = "$ORGAN_PORT" ] && continue
         local cname
         cname=$(echo "$line" | sed "s/client $cid: '\\(.*\\)'.*/\\1/" | xargs)
         log "Connecting '$cname' (client $cid) to organ-engine ($ORGAN_PORT)"
         aconnect "$cid:0" "$ORGAN_PORT:0" 2>/dev/null || true
-    done
+    done <<< "$clients"
 }
 
 connect_midi
