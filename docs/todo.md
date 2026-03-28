@@ -85,5 +85,9 @@
 - [ ] Synthetic organ sound generator (standalone tool)
 - [ ] Real-time additive synthesis in engine (zero RAM usage)
 - [ ] Hybrid mode (real attack samples + synthesized sustain)
-- [ ] systemd service for appliance mode
+- [x] systemd service for appliance mode (boots in ~27 seconds)
+- [x] Auto-detect HDMI device and ALSA card by name
+- [x] Auto-connect MIDI devices at startup
+- [x] Power button clean shutdown
+- [x] PipeWire disabled, standalone JACK
 - [ ] Auto-connect MIDI devices on plug-in
