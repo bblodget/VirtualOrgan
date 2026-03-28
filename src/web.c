@@ -19,6 +19,7 @@
 #include "mongoose.h"
 #include "web.h"
 #include "mixer.h"
+#include "voice.h"
 
 static struct mg_mgr mgr;
 static pthread_t web_thread;
@@ -65,7 +66,8 @@ static int build_state_json(char *buf, size_t bufsize)
 {
     int off = 0;
     off += snprintf(buf + off, bufsize - off,
-                    "{\"gain\":%.3f,\"divisions\":[", mixer_get_gain());
+                    "{\"gain\":%.3f,\"release_fade_ms\":%d,\"divisions\":[",
+                    mixer_get_gain(), organ_config->release_fade_ms);
 
     for (int d = 0; d < organ_config->num_divisions; d++) {
         const DivisionConfig *dc = &organ_config->divisions[d];
@@ -242,6 +244,12 @@ static void process_command(const char *body, size_t len,
         if (div_idx >= 0 && div_idx < organ_config->num_divisions && val >= 0.0f) {
             if (val > 1.0f) val = 1.0f;
             organ_config->divisions[div_idx].expression_gain = val;
+        }
+    } else if (strcmp(action, "set_release_fade") == 0) {
+        int ms = json_get_int(buf, "value");
+        if (ms >= 10 && ms <= 2000) {
+            organ_config->release_fade_ms = ms;
+            voice_set_release_fade(ms, organ_config->sample_rate);
         }
     } else if (strcmp(action, "preset_full") == 0) {
         apply_preset_full(json_get_int(buf, "division"));

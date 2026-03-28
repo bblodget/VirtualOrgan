@@ -129,11 +129,19 @@ body {
 
 <div class="header">
   <h1>VirtualOrgan</h1>
-  <div class="gain-control">
-    <label>Volume</label>
-    <input type="range" id="gain-slider" min="0" max="200"
-      step="1" value="50" oninput="setGain(this.value)">
-    <span class="gain-value" id="gain-value">0.50</span>
+  <div style="display:flex; gap:20px; align-items:center;">
+    <div class="gain-control">
+      <label>Release</label>
+      <input type="range" id="release-slider" min="10" max="1000"
+        step="10" value="150" oninput="setReleaseFade(this.value)">
+      <span class="gain-value" id="release-value">150ms</span>
+    </div>
+    <div class="gain-control">
+      <label>Volume</label>
+      <input type="range" id="gain-slider" min="0" max="200"
+        step="1" value="50" oninput="setGain(this.value)">
+      <span class="gain-value" id="gain-value">0.50</span>
+    </div>
   </div>
 </div>
 
@@ -192,6 +200,11 @@ function setGain(val) {
   send({action: 'set_gain', value: g});
 }
 
+function setReleaseFade(val) {
+  document.getElementById('release-value').textContent = val + 'ms';
+  send({action: 'set_release_fade', value: parseInt(val)});
+}
+
 function setExpression(divIdx, val) {
   const g = val / 100.0;
   const el = document.getElementById('expr-value-' + divIdx);
@@ -216,6 +229,14 @@ function render() {
   if (document.activeElement !== slider) {
     slider.value = g;
     gv.textContent = state.gain.toFixed(2);
+  }
+
+  // Release fade slider
+  const rSlider = document.getElementById('release-slider');
+  const rVal = document.getElementById('release-value');
+  if (document.activeElement !== rSlider) {
+    rSlider.value = state.release_fade_ms;
+    rVal.textContent = state.release_fade_ms + 'ms';
   }
 
   // All divisions with stops — update in-place
