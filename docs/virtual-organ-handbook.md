@@ -14,6 +14,7 @@ A guide to the concepts, theory, and technologies behind building a real-time vi
 6. [Sample Playback and Digital Audio Fundamentals](#chapter-6-sample-playback-and-digital-audio-fundamentals)
 7. [Sample Sets — Where Pipe Sounds Come From](#chapter-7-sample-sets--where-pipe-sounds-come-from)
 8. [Multiple Keyboards and MIDI Device Mapping](#chapter-8-multiple-keyboards-and-midi-device-mapping)
+9. [Appliance Mode — Automatic Startup and Shutdown](#chapter-9-appliance-mode--automatic-startup-and-shutdown)
 
 ---
 
@@ -690,4 +691,174 @@ This works over SSH, making it possible to control the organ engine remotely fro
 
 ---
 
-*This handbook will grow as the project develops. Future chapters will cover the web interface, wind simulation, and system deployment.*
+## Chapter 9: Appliance Mode — Automatic Startup and Shutdown
+
+### The Goal
+
+The organ machine should behave like an appliance: power it on, it's ready to play. Press the power button, it shuts down cleanly. No monitor, no keyboard, no login required. Just the MIDI keyboards and the HDMI connection to the amplifier.
+
+### The Startup Chain
+
+When the machine powers on, the following happens automatically:
+
+1. **BIOS/UEFI** → boots the PREEMPT_RT Linux kernel
+2. **systemd** initializes the system
+3. **User lingering** creates a session for `brandonb` without requiring login
+4. **organ-engine.service** starts the startup script
+5. **start-organ.sh** launches JACK → organ-engine → auto-connects MIDI devices
+6. **The organ is ready to play**
+
+### User Lingering
+
+Normally, systemd user services only run after someone logs in. **Lingering** tells systemd to start a user session at boot automatically:
+
+```bash
+sudo loginctl enable-linger brandonb
+```
+
+This is essential for a headless appliance — without it, the organ service would never start because nobody is logging in.
+
+### Disabling PipeWire
+
+The default Debian Trixie desktop runs **PipeWire** as the audio server. It conflicts with JACK because both try to grab the audio hardware. For the appliance, PipeWire must be permanently disabled:
+
+```bash
+# Disable the services
+systemctl --user disable --now pipewire.socket pipewire.service
+systemctl --user disable --now pipewire-pulse.socket pipewire-pulse.service
+systemctl --user disable --now wireplumber.service
+
+# Mask them to prevent re-activation
+systemctl --user mask pipewire.socket pipewire.service
+systemctl --user mask pipewire-pulse.socket pipewire-pulse.service
+systemctl --user mask wireplumber.service
+```
+
+**Masking** creates symlinks to `/dev/null`, which prevents the services from starting even if another service or the global configuration tries to pull them in. This is stronger than just disabling.
+
+### The Startup Script
+
+`scripts/start-organ.sh` handles the full startup sequence:
+
+1. **Start JACK** with the correct ALSA device, sample rate, buffer size, and output channels for the amplifier
+2. **Wait for JACK** by polling `jack_lsp` (up to 15 seconds)
+3. **Start organ-engine** with the TOML configuration
+4. **Wait for the ALSA sequencer port** to appear
+5. **Auto-connect all MIDI devices** — scans for hardware MIDI inputs (ALSA client IDs > 15) and connects them to the engine
+6. **Wait and handle signals** — traps SIGTERM/SIGINT, forwards to child processes for clean shutdown
+
+Key design decisions:
+- JACK and organ-engine run as child processes of the script, so systemd monitors the script as the main PID
+- The script uses `set -euo pipefail` for strict error handling, with `|| true` on commands that may legitimately fail (like grep during polling)
+- MIDI auto-connect handles missing devices gracefully — if a keyboard isn't plugged in at boot, it simply skips it
+
+### The systemd Service
+
+`~/.config/systemd/user/organ-engine.service`:
+
+```ini
+[Unit]
+Description=VirtualOrgan Engine (JACK + organ-engine)
+After=sound.target
+
+[Service]
+Type=exec
+WorkingDirectory=/home/brandonb/Dev/VirtualOrgan
+ExecStart=/home/brandonb/Dev/VirtualOrgan/scripts/start-organ.sh
+TimeoutStopSec=10
+Restart=on-failure
+RestartSec=5
+LimitRTPRIO=95
+LimitRTTIME=infinity
+LimitMEMLOCK=infinity
+Environment=JACK_NO_AUDIO_RESERVATION=1
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=organ-engine
+
+[Install]
+WantedBy=default.target
+```
+
+Important fields explained:
+
+- **`WorkingDirectory`** — ensures relative paths in the TOML config (like `samples/...` and `web/index.html`) resolve correctly
+- **`LimitRTPRIO=95`** — allows JACK to request real-time scheduling priority
+- **`LimitMEMLOCK=infinity`** — allows JACK to lock memory (prevents page faults during audio processing)
+- **`JACK_NO_AUDIO_RESERVATION=1`** — prevents JACK from trying D-Bus device reservation, which fails in a headless session
+- **`Restart=on-failure`** — if the engine crashes, systemd restarts it after 5 seconds. A clean shutdown (SIGTERM from power button) does not trigger a restart
+- **`WantedBy=default.target`** — starts when the user session initializes (which happens at boot thanks to lingering)
+
+### Enabling the Service
+
+```bash
+systemctl --user daemon-reload
+systemctl --user enable organ-engine.service
+```
+
+### Managing the Service
+
+```bash
+# Start manually
+systemctl --user start organ-engine.service
+
+# Stop
+systemctl --user stop organ-engine.service
+
+# Restart (e.g., after rebuilding the engine)
+systemctl --user restart organ-engine.service
+
+# View logs
+journalctl --user -u organ-engine -f
+
+# Check status
+systemctl --user status organ-engine.service
+```
+
+### Power Button Shutdown
+
+The power button behavior is controlled by two layers:
+
+1. **systemd-logind** (`/etc/systemd/logind.conf`) — the system-level handler
+2. **Cinnamon desktop** (if running) — the desktop environment can override logind
+
+By default, Cinnamon sets the power button to **suspend**. For an appliance, we want **shutdown**:
+
+```bash
+# Fix Cinnamon's override
+gsettings set org.cinnamon.settings-daemon.plugins.power button-power 'shutdown'
+```
+
+The shutdown sequence:
+1. Power button pressed → systemd-logind initiates `poweroff.target`
+2. systemd sends **SIGTERM** to all services
+3. The startup script's trap catches SIGTERM
+4. It sends SIGTERM to organ-engine (which exits cleanly) and JACK
+5. The system powers off
+
+### Monitoring and Troubleshooting
+
+All output from JACK and organ-engine goes to the systemd journal:
+
+```bash
+# Live log
+journalctl --user -u organ-engine -f
+
+# Full log since last boot
+journalctl --user -u organ-engine -b
+
+# Check if samples loaded correctly
+journalctl --user -u organ-engine -b | grep "sampler:"
+
+# Check MIDI connections
+journalctl --user -u organ-engine -b | grep "Connecting"
+```
+
+Common issues:
+- **`loaded 0 samples`** — relative paths not resolving. Check `WorkingDirectory` in the service file.
+- **`Cannot open PCM device`** — PipeWire still holding the audio device. Verify it's masked.
+- **No MIDI connections** — keyboard not plugged in at boot. Plug it in and run `aconnect` manually, or restart the service.
+
+---
+
+*This handbook will grow as the project develops. Future chapters will cover the web interface, wind simulation, and additional refinements.*
