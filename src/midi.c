@@ -199,10 +199,6 @@ static void *alsa_midi_thread(void *arg)
             if (mapped_ch > 0)
                 me.channel = mapped_ch;
 
-            fprintf(stderr, "midi: %s ch=%d note=%d vel=%d\n",
-                    me.type == MIDI_NOTE_ON ? "NOTE_ON" :
-                    me.type == MIDI_NOTE_OFF ? "NOTE_OFF" : "CC",
-                    me.channel, me.note, me.velocity);
             ring_buffer_push(rb, &me);
         }
     }
