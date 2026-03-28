@@ -176,6 +176,19 @@ gedackt8 = { rank = "gedackt8", engage_cc = 39 }
 | `{name}`      | Note name with # for sharps       | `C`                |
 | `{octave}`    | Octave number                     | `4`                |
 
+## Appliance Mode
+
+The engine can run as a systemd service, starting automatically at boot:
+
+```bash
+systemctl --user start organ-engine.service    # start
+systemctl --user stop organ-engine.service     # stop
+systemctl --user restart organ-engine.service  # restart (e.g., after rebuild)
+journalctl --user -u organ-engine -f           # view live logs
+```
+
+See [`docs/virtual-organ-handbook.md`](docs/virtual-organ-handbook.md) Chapter 9 for full setup instructions.
+
 ## Documentation
 
 - [`docs/config-reference.md`](docs/config-reference.md) — Complete TOML configuration reference
