@@ -10,7 +10,8 @@ CONFIG="$ORGAN_DIR/test/caen_config.toml"
 ENGINE="$ORGAN_DIR/organ-engine"
 
 # JACK settings for Yamaha RX-A8A via HDMI
-JACK_DEVICE="hw:0,7"
+# Use card name "PCH" instead of number to handle USB device reordering
+JACK_DEVICE="hw:PCH,7"
 JACK_RATE=48000
 JACK_PERIOD=512
 JACK_OUTCHANNELS=8
