@@ -10,8 +10,13 @@ CONFIG="$ORGAN_DIR/test/caen_config.toml"
 ENGINE="$ORGAN_DIR/organ-engine"
 
 # JACK settings for Yamaha RX-A8A via HDMI
-# Use card name "PCH" instead of number to handle USB device reordering
-JACK_DEVICE="hw:PCH,7"
+# Find the correct HDMI device number dynamically (it can change between boots)
+HDMI_DEV=$(aplay -l 2>/dev/null | grep "RX-A8A" | sed 's/.*device \([0-9]*\).*/\1/' | head -1)
+if [ -z "$HDMI_DEV" ]; then
+    log "WARNING: RX-A8A not detected, falling back to device 7"
+    HDMI_DEV=7
+fi
+JACK_DEVICE="hw:PCH,$HDMI_DEV"
 JACK_RATE=48000
 JACK_PERIOD=512
 JACK_OUTCHANNELS=8
